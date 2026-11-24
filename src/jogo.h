@@ -144,6 +144,11 @@ public:
     void atualizar(float dt);
     void desenhar();
     void definir_faixa(int faixa) { toque.layout(faixa); }   // a tela ficou mais larga/estreita
+    // Diagnóstico (página aberta com ?debug): mostra onde o último toque caiu, em coordenadas do jogo.
+    bool debug_toque = false;
+    int dbg_x = 0, dbg_y = 0;
+    bool dbg_vivo = false;
+    void dbg_toque(int x, int y, bool vivo) { dbg_x = x; dbg_y = y; dbg_vivo = vivo; }
     void perdeu_foco();      // pausa automaticamente ao sair da janela
     bool rodando = true;
 

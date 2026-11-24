@@ -1178,4 +1178,9 @@ void Jogo::desenhar() {
     }
     desenhar_botoes_sistema();
     if (toque.ativo && estado == JOGANDO && !(desafio || notas.aberto || pausado)) toque.desenhar(perto_terminal);
+    if (debug_toque) {
+        circ_borda((float)dbg_x, (float)dbg_y, 22, 3, dbg_vivo ? rgb(255, 60, 60) : rgb(255, 255, 0));
+        texto(a_wstr(dbg_x) + L"," + a_wstr(dbg_y) + L"  faixa=" + a_wstr(base_x()) + L" W=" + a_wstr(largura_tela()), F_PEQ,
+              rgb(255, 255, 0), -base_x() + 6, ALTURA - 24);
+    }
 }

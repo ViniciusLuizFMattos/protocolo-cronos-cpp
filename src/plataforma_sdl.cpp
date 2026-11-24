@@ -213,14 +213,29 @@ void tratar_eventos(App& a) {
             break;
         case SDL_FINGERDOWN: case SDL_FINGERMOTION: case SDL_FINGERUP: {
             a.ultimo_toque = SDL_GetTicks() ? SDL_GetTicks() : 1;
+            float lx, ly;
+#ifdef __EMSCRIPTEN__
+            {   // Cálculo próprio (independe da densidade de pixels do aparelho): o canvas ocupa a área CSS inteira e o jogo
+                // fica centralizado nele, com barras se as proporções não baterem.
+                double cw = 0, ch = 0;
+                emscripten_get_element_css_size("#canvas", &cw, &ch);
+                if (cw < 1) cw = 1;
+                if (ch < 1) ch = 1;
+                double lw = gfx::largura_tela(), esc = std::min(cw / lw, ch / ALTURA);
+                double ox = (cw - lw * esc) / 2, oy = (ch - ALTURA * esc) / 2;
+                lx = (float)((ev.tfinger.x * cw - ox) / esc);
+                ly = (float)((ev.tfinger.y * ch - oy) / esc);
+            }
+#else
             int w, h;
             SDL_GetWindowSize(a.janela, &w, &h);
-            float lx, ly;
             SDL_RenderWindowToLogical(a.render, (int)(ev.tfinger.x * w), (int)(ev.tfinger.y * h), &lx, &ly);
+#endif
             e.tipo = ev.type == SDL_FINGERDOWN ? Ev::MouseDown : (ev.type == SDL_FINGERUP ? Ev::MouseUp : Ev::MouseMove);
             e.x = gx((int)lx); e.y = (int)ly;
             e.dedo = (int)(ev.tfinger.fingerId & 0x7FFFFFFF);
             e.toque = true;
+            jogo.dbg_toque(e.x, e.y, ev.type != SDL_FINGERUP);
             entrada.mx = e.x; entrada.my = e.y;
             jogo.tratar_evento(e);
             break;
@@ -323,6 +338,9 @@ int main(int, char**) {
 
     app.jogo.reset(new Jogo(app.som, app.arm.get()));
     ajustar_largura(app, true);
+#ifdef __EMSCRIPTEN__
+    app.jogo->debug_toque = emscripten_run_script_int("/[?&]debug/.test(location.search) ? 1 : 0") != 0;
+#endif
     app.anterior = SDL_GetPerformanceCounter();
 
 #ifdef __EMSCRIPTEN__
