@@ -34,6 +34,7 @@ public:
     Porta porta;
     std::vector<Terminal> terminais;
     std::vector<Ret> solidos;
+    std::vector<Ret> mesas;          // mesas de laboratório: interativas (dica da pergunta atual)
     int inicio_x, inicio_y;
     char grade[ROWS][COLS + 1];
     gfx::Superficie estatico;

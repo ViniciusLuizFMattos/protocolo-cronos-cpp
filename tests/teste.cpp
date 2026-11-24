@@ -33,6 +33,8 @@ static void testar_banco() {
             CHECK(ids.insert(q.id).second, "id unico");
             CHECK(!q.resposta.empty() && q.resposta.find_first_not_of(L"0123456789") == std::wstring::npos, "resposta numerica");
             CHECK(!q.enunciado.empty() && !q.resolucao.empty(), "texto presente");
+            CHECK(!q.dica.empty(), "toda questao tem dica");
+            CHECK(q.dica.find(q.resposta) == std::wstring::npos || q.resposta.size() < 2, "dica nao entrega a resposta");
         }
     }
     int soma = 0;
@@ -91,6 +93,15 @@ static void testar_mapas() {
         int pr = f.porta.rect.y / TILE, pc = f.porta.rect.x / TILE - 1;
         CHECK(vis[pr][pc] || vis[pr + 1][pc], "porta alcancavel");
         CHECK(f.terminais.size() >= (size_t)f.meta(), "terminais suficientes para a meta");
+        CHECK(!f.mesas.empty(), "toda fase tem mesa");
+        for (auto& m : f.mesas) {
+            bool ok = false;
+            Ret zona = m.inflar(34, 34);
+            for (int r = 0; r < ROWS && !ok; r++)
+                for (int c = 0; c < COLS && !ok; c++)
+                    if (vis[r][c] && zona.colide(Ret(c * TILE, r * TILE, TILE, TILE))) ok = true;
+            CHECK(ok, "mesa alcancavel");
+        }
     }
 }
 
@@ -228,6 +239,117 @@ static void testar_toque_notas() {
     CHECK(!j.notas.aberto, "notas fecham depois de usar a resposta");
 }
 
+static void colocar_perto_mesa(Jogo& j, const Ret& m) {
+    j.jogador->rect.x = m.x;
+    j.jogador->rect.y = m.baixo() + 2;
+    j.jogador->px = (float)(j.jogador->rect.x + 11);
+    j.jogador->py = (float)(j.jogador->rect.y + 11);
+}
+
+static void testar_mesa_dica() {
+    Audio som;
+    som.iniciar(false);
+    Jogo j(som, nullptr);
+    tecla(j, K_RETURN);
+    passar_intro(j);
+    const Ret mesa = j.fase->mesas[0];
+    float t0 = j.tempo;
+    // sem pergunta ainda: a mesa avisa e nao cobra tempo
+    colocar_perto_mesa(j, mesa);
+    CHECK(j.mesa_proxima() != nullptr, "mesa proxima");
+    tecla(j, 'E');
+    CHECK(j.dica_aberta && j.dica_questao == nullptr, "mesa sem pergunta mostra aviso");
+    CHECK(j.tempo >= t0 - 0.01f && j.dicas_total == 0, "aviso sem custo");
+    tecla(j, K_RETURN);
+    CHECK(!j.dica_aberta, "Enter fecha a dica");
+    // abre um terminal (recebe pergunta) e sai
+    colocar_perto(j, j.fase->terminais[0]);
+    tecla(j, 'E');
+    const Questao* q = j.desafio->questao();
+    tecla(j, K_ESC);
+    CHECK(!j.desafio, "saiu do terminal");
+    // agora a mesa mostra a dica dessa pergunta e cobra tempo uma vez
+    colocar_perto_mesa(j, mesa);
+    float t1 = j.tempo;
+    tecla(j, 'E');
+    CHECK(j.dica_aberta && j.dica_questao == q, "dica da pergunta atual");
+    CHECK(j.dica_nova && j.dicas_total == 1, "primeira consulta conta");
+    CHECK(j.tempo <= t1 - PENALIDADE_DICA + 0.01f && j.tempo >= t1 - PENALIDADE_DICA - 0.5f, "custa o tempo da dica");
+    // com a dica aberta o personagem nao anda e E nao reabre
+    tecla(j, K_RETURN);
+    float t2 = j.tempo;
+    tecla(j, 'E');
+    CHECK(j.dica_aberta && !j.dica_nova && j.dicas_total == 1, "reler a dica nao cobra de novo");
+    CHECK(j.tempo >= t2 - 0.01f, "reler nao desconta tempo");
+    tecla(j, K_ESC);
+    // erro troca a pergunta: a nova dica cobra de novo
+    colocar_perto(j, j.fase->terminais[0]);
+    tecla(j, 'E');
+    responder(j, false);
+    tecla(j, K_RETURN);
+    tecla(j, K_ESC);
+    const Questao* q2 = j.fase->terminais[0].questao;
+    CHECK(q2 != q, "pergunta trocou apos erro");
+    colocar_perto_mesa(j, mesa);
+    tecla(j, 'E');
+    CHECK(j.dica_questao == q2 && j.dica_nova && j.dicas_total == 2, "nova pergunta, nova dica");
+    tecla(j, K_RETURN);
+    // nova partida zera as dicas
+    j.novo_jogo();
+    CHECK(j.dicas_total == 0 && j.dicas_usadas.empty(), "nova partida zera dicas");
+}
+
+static void testar_revisao() {
+    Audio som;
+    som.iniciar(false);
+    Jogo j(som, nullptr);
+    tecla(j, K_RETURN);
+    passar_intro(j);
+    // 2 erros e 1 acerto no mesmo terminal
+    for (int i = 0; i < 2; i++) {
+        colocar_perto(j, j.fase->terminais[0]);
+        tecla(j, 'E');
+        responder(j, false);
+        tecla(j, K_RETURN);
+    }
+    colocar_perto(j, j.fase->terminais[0]);
+    tecla(j, 'E');
+    responder(j, true);
+    tecla(j, K_RETURN);
+    CHECK(j.historico.size() == 3, "3 tentativas registradas");
+    CHECK(!j.historico[0].ok && !j.historico[1].ok && j.historico[2].ok, "acertos e erros registrados");
+    CHECK(j.historico[0].dada.size() > 1, "resposta digitada guardada");
+    j.encerrar(DERROTA, L"teste");
+    CHECK(j.estado == DERROTA, "fim de jogo");
+    tecla(j, 'V');
+    CHECK(j.estado == REVISAO && j.rev_pag == 0, "V abre a revisao no resumo");
+    CHECK(j.rev_paginas() == 3, "resumo + 2 erros");
+    j.desenhar();                          // as paginas desenham sem falhar
+    tecla(j, K_RIGHT);
+    CHECK(j.rev_pag == 1, "seta direita avanca");
+    j.desenhar();
+    tecla(j, K_RIGHT); tecla(j, K_RIGHT);
+    CHECK(j.rev_pag == 2, "nao passa da ultima pagina");
+    j.desenhar();
+    tecla(j, K_LEFT); tecla(j, K_LEFT); tecla(j, K_LEFT);
+    CHECK(j.rev_pag == 0, "nao volta antes do resumo");
+    tecla(j, K_ESC);
+    CHECK(j.estado == DERROTA, "Esc volta para a tela do fim");
+    // clique no botao de revisar
+    Evento d; d.tipo = Ev::MouseDown; d.x = 700; d.y = 550;
+    j.tratar_evento(d);
+    CHECK(j.estado == REVISAO, "botao Revisar abre a revisao");
+    tecla(j, K_ESC);
+    j.novo_jogo();
+    CHECK(j.historico.empty(), "nova partida limpa o historico");
+    // sem erros: so o resumo
+    j.estado = JOGANDO;
+    j.encerrar(VITORIA);
+    tecla(j, 'V');
+    CHECK(j.rev_paginas() == 1, "sem erros so ha o resumo");
+    j.desenhar();
+}
+
 int main() {
     gfx::iniciar("assets");
     testar_banco();
@@ -236,6 +358,8 @@ int main() {
     testar_fluxo();
     testar_derrota();
     testar_toque_notas();
+    testar_mesa_dica();
+    testar_revisao();
     std::printf("%d verificacoes, %d falhas\n", total, falhas);
     return falhas ? 1 : 0;
 }

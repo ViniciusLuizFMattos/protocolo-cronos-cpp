@@ -12,6 +12,7 @@ constexpr int TEMPO_TOTAL = 12 * 60;      // tempo limite global (s)
 constexpr int MAX_ERROS = 5;              // falhas críticas permitidas
 constexpr int PENALIDADE_ERRO = 20;       // segundos descontados a cada erro
 constexpr int TOTAL_ACERTOS = 12;
+constexpr int PENALIDADE_DICA = 10;      // segundos descontados ao pedir a dica de uma pergunta (1ª vez)
 constexpr float VEL_JOGADOR = 175.f;      // pixels por segundo
 constexpr float FATOR_CORRIDA = 1.45f;    // Shift (novo no C++)
 constexpr float PI_ = 3.14159265358979f;

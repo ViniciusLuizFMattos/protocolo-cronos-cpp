@@ -4,7 +4,7 @@
 #include <vector>
 #include "gfx.h"
 
-struct Questao { int fase; std::wstring id, enunciado, resposta, resolucao; };
+struct Questao { int fase; std::wstring id, enunciado, resposta, resolucao, dica; };
 const std::vector<Questao>& banco_questoes();
 std::vector<Questao> questoes_da_fase(int numero_fase);   // numero_fase: 1 a 5
 

@@ -11,7 +11,10 @@
 #include "gfx.h"
 #include "mundo.h"
 
-enum Estado { MENU, INTRO, JOGANDO, ESCOLHA_FINAL, VITORIA, DERROTA, CINEMA };
+enum Estado { MENU, INTRO, JOGANDO, ESCOLHA_FINAL, VITORIA, DERROTA, CINEMA, REVISAO };
+
+// Uma resposta enviada num terminal (guardada para a revisão do fim da partida).
+struct Tentativa { const Questao* q; std::wstring dada; bool ok; bool dica; };
 
 // Recordes e preferências salvos entre partidas.
 struct Dados {
@@ -176,6 +179,24 @@ public:
     Armazenamento* arm = nullptr;
     ControlesToque toque;
     bool novo_recorde = false;
+    // --- mesas de análise (dica da pergunta atual) ---
+    bool dica_aberta = false;
+    bool dica_nova = false;                 // true quando esta consulta custou tempo
+    const Questao* dica_questao = nullptr;  // nullptr = ainda não há pergunta
+    Terminal* ultimo_terminal = nullptr;
+    std::set<const Questao*> dicas_usadas;
+    int dicas_total = 0;
+    // --- revisão da partida (depois da vitória ou da derrota) ---
+    std::vector<Tentativa> historico;
+    Estado estado_fim = VITORIA;            // tela para onde a revisão volta
+    int rev_pag = 0;                        // 0 = resumo; 1..n = cada erro
+    std::vector<int> rev_erros;             // índices (em historico) das respostas erradas
+    void registrar(const Questao* q, const std::wstring& dada, bool ok);
+    void abrir_revisao();
+    int rev_paginas() const { return 1 + (int)rev_erros.size(); }
+    void usar_mesa();
+    const Ret* mesa_proxima() const;
+    Terminal* terminal_da_pergunta();
 
     void novo_jogo(bool iniciar = true);
     void carregar_fase(int idx);
@@ -195,7 +216,7 @@ private:
     std::vector<Destroco> destrocos;
     std::vector<Particula> cinema_bolhas;
     std::set<std::string> cinema_eventos;
-    Botao btn_iniciar, btn_novo, btn_fugir, btn_sobrecarga, btn_continuar, btn_menu;
+    Botao btn_iniciar, btn_novo, btn_fugir, btn_sobrecarga, btn_continuar, btn_menu, btn_revisar, btn_ant, btn_prox, btn_voltar;
     gfx::Ret r_som, r_pausa;
     bool arrastando_vol = false;
     int dedo_vol = -3;
@@ -222,6 +243,8 @@ private:
     void desenhar_vitoria();
     void desenhar_fim();
     void desenhar_cinema();
+    void desenhar_dica();
+    void desenhar_revisao();
     void desenhar_estacao(float sy, int luzes, float brilho);
     void desenhar_capsula(float cx, float cy);
     void rotulo(const std::wstring& txt, int cx, int cy, gfx::Cor cor, bool pequeno = false);

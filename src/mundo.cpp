@@ -79,7 +79,10 @@ Fase::Fase(int i) : idx(i), estatico(LARGURA, ROWS * TILE) {
     for (int r = 0; r < ROWS; r++)
         for (int c = 0; c < COLS; c++)
             if (grade[r][c] == '#') solidos.push_back(Ret(c * TILE, r * TILE, TILE, TILE));
-    for (auto& o : objetos) solidos.push_back(o.second);
+    for (auto& o : objetos) {
+        solidos.push_back(o.second);
+        if (o.first == 'M') mesas.push_back(o.second);
+    }
     for (auto& t : terminais) solidos.push_back(t.rect);
     inicio_x = cfg.ic * TILE + TILE / 2;
     inicio_y = cfg.ir * TILE + TILE / 2;
@@ -280,6 +283,7 @@ void Iluminacao::aplicar(const Jogador& j, const Fase& f, float luz_dx, float lu
     subtrair(lanterna, (int)(cx + luz_dx * 60), (int)(cy + luz_dy * 60));
     subtrair(ambiente, cx, cy);
     for (const auto& term : f.terminais) subtrair(brilho, term.rect.cx(), term.rect.cy());
+    for (const auto& mesa : f.mesas) subtrair(brilho, mesa.cx(), mesa.cy());
     subtrair(brilho, f.porta.rect.cx(), f.porta.rect.cy());
     (void)t;
     escurecer(alfa.data(), LARGURA, ROWS * TILE, 0, 0, rgb(0, 4, 10));

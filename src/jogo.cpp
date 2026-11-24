@@ -366,6 +366,7 @@ void Desafio::enviar() {
     resolvida = questao();
     acertou = entrada == resolvida->resposta;
     feedback = true;
+    jogo->registrar(resolvida, entrada, acertou);
     jogo->processar_resposta(terminal, acertou);
 }
 
@@ -431,7 +432,11 @@ Jogo::Jogo(Audio& s, Armazenamento* armazenamento) : som(s), arm(armazenamento) 
         bolhas.push_back({r.entre(0, LARGURA), r.entre(0, ALTURA), r.entre(2, 7), r.entre(10, 40), 0, 0});
     }
     btn_iniciar = Botao(Ret(LARGURA / 2 - 150, 560, 300, 56), L"INICIAR MISSÃO");
-    btn_novo = Botao(Ret(LARGURA / 2 - 170, 526, 340, 56), L"INICIAR NOVA PARTIDA");
+    btn_novo = Botao(Ret(LARGURA / 2 - 350, 526, 340, 56), L"INICIAR NOVA PARTIDA");
+    btn_revisar = Botao(Ret(LARGURA / 2 + 10, 526, 340, 56), L"REVISAR A PARTIDA [V]", rgb(60, 70, 20));
+    btn_ant = Botao(Ret(80, 548, 220, 44), L"< Anterior");
+    btn_voltar = Botao(Ret(402, 548, 220, 44), L"Voltar [Esc]", rgb(90, 50, 30));
+    btn_prox = Botao(Ret(724, 548, 220, 44), L"Próximo >");
     btn_fugir = Botao(Ret(90, 360, 400, 120), L"1 · FUGIR NA CÁPSULA", rgb(20, 80, 60));
     btn_sobrecarga = Botao(Ret(534, 360, 400, 120), L"2 · SOBRECARREGAR O REATOR", rgb(110, 40, 30));
     btn_continuar = Botao(Ret(LARGURA / 2 - 230, 400, 220, 56), L"CONTINUAR");
@@ -466,6 +471,11 @@ void Jogo::novo_jogo(bool iniciar) {
     fogos.clear();
     cinema_t = 0;
     novo_recorde = false;
+    dicas_usadas.clear();
+    dicas_total = 0;
+    historico.clear();
+    rev_erros.clear();
+    rev_pag = 0;
     luz_dx = 1; luz_dy = 0;
     carregar_fase(0);
     if (iniciar) {
@@ -478,6 +488,8 @@ void Jogo::novo_jogo(bool iniciar) {
 void Jogo::carregar_fase(int idx) {
     fase_idx = idx;
     desafio.reset();
+    dica_aberta = false;
+    ultimo_terminal = nullptr;
     fase.reset(new Fase(idx));
     jogador.reset(new Jogador(fase->inicio_x, fase->inicio_y));
 }
@@ -512,6 +524,19 @@ void Jogo::continuar_desafio(Desafio* d) {
     if (!derrota_pendente.empty()) encerrar(DERROTA, derrota_pendente);
     else if (d->acertou) desafio.reset();
     else d->novo_enunciado();
+}
+
+void Jogo::registrar(const Questao* q, const std::wstring& dada, bool ok) {
+    historico.push_back({q, dada, ok, dicas_usadas.count(q) > 0});
+}
+
+void Jogo::abrir_revisao() {
+    estado_fim = estado;
+    rev_erros.clear();
+    for (size_t i = 0; i < historico.size(); i++)
+        if (!historico[i].ok) rev_erros.push_back((int)i);
+    rev_pag = 0;
+    estado = REVISAO;
 }
 
 Jogo::Classif Jogo::classificacao() const {
@@ -555,13 +580,47 @@ Terminal* Jogo::terminal_proximo() {
 
 void Jogo::interagir() {
     Terminal* t = terminal_proximo();
-    if (!t) return;
+    if (!t) {
+        if (mesa_proxima()) usar_mesa();
+        return;
+    }
     if (!t->questao) {
         std::vector<std::wstring> em_uso;
         for (auto& x : fase->terminais) if (x.questao) em_uso.push_back(x.questao->id);
         t->questao = baralhos[fase_idx].sortear(em_uso);
     }
+    ultimo_terminal = t;
     desafio.reset(new Desafio(this, t));
+    som.tocar("bipe");
+}
+
+const Ret* Jogo::mesa_proxima() const {
+    for (const auto& m : fase->mesas)
+        if (m.inflar(34, 34).colide(jogador->rect)) return &m;
+    return nullptr;
+}
+
+// Pergunta "atual": a do último terminal acessado que ainda não foi resolvido (ou, na falta dele, de qualquer terminal pendente
+// que já tenha recebido pergunta).
+Terminal* Jogo::terminal_da_pergunta() {
+    if (ultimo_terminal && !ultimo_terminal->feita && ultimo_terminal->questao) return ultimo_terminal;
+    for (auto& t : fase->terminais)
+        if (!t.feita && t.questao) return &t;
+    return nullptr;
+}
+
+void Jogo::usar_mesa() {
+    Terminal* t = terminal_da_pergunta();
+    dica_aberta = true;
+    dica_nova = false;
+    if (!t) { dica_questao = nullptr; return; }
+    dica_questao = t->questao;
+    if (!dicas_usadas.count(dica_questao)) {       // a primeira consulta de cada pergunta custa tempo; reler é de graça
+        dicas_usadas.insert(dica_questao);
+        dicas_total++;
+        tempo -= PENALIDADE_DICA;
+        dica_nova = true;
+    }
     som.tocar("bipe");
 }
 
@@ -572,7 +631,7 @@ bool Jogo::r_volume(Ret& r) const {
         r = Ret(LARGURA / 2 - 200, 486, 400, 44);
         return true;
     }
-    if (estado == INTRO || estado == CINEMA) return false;
+    if (estado == INTRO || estado == CINEMA || estado == REVISAO) return false;
     r = Ret(LARGURA - 8 - 160, 58, 160, 38);
     return true;
 }
@@ -592,7 +651,7 @@ bool Jogo::apertar(int dedo, int x, int y) {
     if (r_volume(rv) && rv.inflar(24, 20).contem(x, y)) { arrastando_vol = true; dedo_vol = dedo; ajustar_volume(x); return true; }
     if (estado != JOGANDO || pausado) return false;
     if (r_pausa.contem(x, y)) { pausado = true; toque.soltar_tudo(); return true; }
-    if (toque.ativo && !desafio && !notas.aberto) {
+    if (toque.ativo && !desafio && !notas.aberto && !dica_aberta) {
         ControlesToque::Acao a = toque.apertar(dedo, x, y);
         if (a == ControlesToque::E) interagir();
         else if (a == ControlesToque::N) { notas.aberto = true; toque.soltar_tudo(); }
@@ -638,7 +697,9 @@ void Jogo::tratar_evento(const Evento& e) {
         if ((enter_ou_espaco || clique) && intro_t > 0.5f && intro_saida < 0) intro_saida = 0;
         break;
     case JOGANDO:
-        if (pausado) {
+        if (dica_aberta) {
+            if (enter_ou_espaco || tec(e, K_ESC) || clique) dica_aberta = false;
+        } else if (pausado) {
             if (tec(e, K_ESC) || tec(e, 'P') || tec(e, K_RETURN) || btn_continuar.clicado(e)) pausado = false;
             else if (tec(e, 'Q') || btn_menu.clicado(e)) { pausado = false; estado = MENU; }
         } else if (notas.aberto) {
@@ -662,7 +723,13 @@ void Jogo::tratar_evento(const Evento& e) {
         break;
     case VITORIA:
     case DERROTA:
-        if (tec2(e, K_RETURN, 'R') || btn_novo.clicado(e)) novo_jogo();
+        if (tec(e, 'V') || btn_revisar.clicado(e)) abrir_revisao();
+        else if (tec2(e, K_RETURN, 'R') || btn_novo.clicado(e)) novo_jogo();
+        break;
+    case REVISAO:
+        if (tec2(e, K_RIGHT, K_RETURN) || tec(e, K_SPACE) || btn_prox.clicado(e)) { if (rev_pag + 1 < rev_paginas()) rev_pag++; }
+        else if (tec(e, K_LEFT) || btn_ant.clicado(e)) { if (rev_pag > 0) rev_pag--; }
+        else if (tec2(e, K_ESC, K_BACK) || btn_voltar.clicado(e)) estado = estado_fim;
         break;
     }
 }
@@ -714,7 +781,7 @@ void Jogo::atualizar_jogo(float dt) {
         return;
     }
     Fase& f = *fase;
-    bool bloqueado = desafio || notas.aberto;
+    bool bloqueado = desafio || notas.aberto || dica_aberta;
     entrada.joy_x = toque.ativo ? toque.vx : 0.f;
     entrada.joy_y = toque.ativo ? toque.vy : 0.f;
     jogador->atualizar(dt, f.colisores(), !bloqueado);
@@ -935,7 +1002,17 @@ void Jogo::desenhar_jogo() {
     jogador->desenhar();
     luz.aplicar(*jogador, f, luz_dx, luz_dy, t);
     // prompts (acima da escuridão para ficarem legíveis)
-    Terminal* prox = (!desafio && !notas.aberto) ? terminal_proximo() : nullptr;
+    bool livre = !desafio && !notas.aberto && !dica_aberta;
+    Terminal* prox = livre ? terminal_proximo() : nullptr;
+    const Ret* mesa = (livre && !prox) ? mesa_proxima() : nullptr;
+    if (mesa) {
+        Terminal* tp = terminal_da_pergunta();
+        bool de_graca = tp && dicas_usadas.count(tp->questao);
+        std::wstring acao = toque.ativo ? L"Toque em E para " : L"[E] ";
+        acao += !tp ? L"Examinar a mesa" : (de_graca ? L"Reler a dica" : L"Pedir dica (-" + a_wstr(PENALIDADE_DICA) + L" s)");
+        rotulo(L"Mesa de análise", mesa->cx(), mesa->y - 46, AMARELO);
+        rotulo(acao, mesa->cx(), mesa->y - 26, BRANCO);
+    }
     if (prox) {
         rotulo(prox->nome, prox->rect.cx(), prox->rect.y - 46, AMARELO);
         rotulo(toque.ativo ? L"Toque em E para acessar" : L"[E] Acessar Terminal", prox->rect.cx(), prox->rect.y - 26, BRANCO);
@@ -952,9 +1029,10 @@ void Jogo::desenhar_jogo() {
         painel(r, rgb(10, 20, 32), AMARELO);
         texto(aviso, F_TEXTO, AMARELO, r.cx(), r.y + 7, true);
     }
-    perto_terminal = prox != nullptr;
+    perto_terminal = prox != nullptr || mesa != nullptr;
     if (desafio) desafio->desenhar(t);
     if (notas.aberto) notas.desenhar(t);
+    if (dica_aberta) desenhar_dica();
     if (pausado) {
         veu(190);
         texto(L"PAUSADO", F_GIGANTE, CIANO, LARGURA / 2, 210, true);
@@ -963,6 +1041,98 @@ void Jogo::desenhar_jogo() {
         btn_continuar.desenhar(F_TITULO);
         btn_menu.desenhar(F_TITULO);
     }
+}
+
+void Jogo::desenhar_dica() {
+    veu(170);
+    Ret r(152, 100, 720, 430);
+    painel(r, rgb(10, 20, 32), AMARELO);
+    int x = r.x + 30, larg = r.w - 60;
+    texto(L"MESA DE ANÁLISE", F_TITULO, AMARELO, x, r.y + 16);
+    linha((float)x, (float)r.y + 56, (float)r.dir() - 30, (float)r.y + 56, 1, rgb(90, 80, 40));
+    int y = r.y + 70;
+    if (!dica_questao) {
+        paragrafo(L"Você ainda não recebeu nenhuma pergunta.\nAcesse um terminal [E] para receber uma pergunta e volte aqui para pedir uma dica sobre ela.", F_TEXTO, BRANCO, x, y, larg, 6);
+    } else {
+        texto(L"Pergunta " + dica_questao->id + L" · " + info_fase(fase_idx).conteudo, F_PEQ, CINZA, x, y);
+        y = paragrafo(dica_questao->enunciado, F_PEQ, rgb(170, 190, 205), x, y + 26, larg, 3);
+        y += 18;
+        texto(L"DICA", F_TITULO, VERDE, x, y);
+        y = paragrafo(dica_questao->dica, F_TEXTO, BRANCO, x, y + 34, larg, 5);
+        y += 14;
+        if (dica_nova) texto(L"-" + a_wstr(PENALIDADE_DICA) + L" s de tempo (reler esta dica é de graça)", F_PEQ, AMARELO, x, y);
+        else texto(L"Dica já consultada: sem custo de tempo.", F_PEQ, CINZA, x, y);
+    }
+    texto(toque.ativo ? L"Toque na tela para continuar" : L"Aperte [Enter] para continuar", F_TITULO, pisca(t, BRANCO, CINZA), r.cx(), r.baixo() - 46, true);
+}
+
+void Jogo::desenhar_revisao() {
+    desenhar_fundo_menu();
+    Ret p(60, 48, 904, 560);
+    painel(p, rgb(10, 20, 32), CIANO);
+    int x = p.x + 30, larg = p.w - 60;
+    int paginas = rev_paginas();
+    if (rev_pag == 0) {
+        texto(L"REVISÃO DA PARTIDA", F_GRANDE, AMARELO, x, p.y + 14);
+        int tent[NUM_FASES] = {}, ac[NUM_FASES] = {}, dic[NUM_FASES] = {};
+        for (const auto& t : historico) {
+            int f = t.q->fase - 1;
+            tent[f]++;
+            if (t.ok) ac[f]++;
+            if (t.dica) dic[f]++;
+        }
+        int y = p.y + 68;
+        texto(L"Assunto", F_PEQ, CINZA, x, y);
+        texto_dir(L"Acertos", F_PEQ, CINZA, p.x + 590, y);
+        texto_dir(L"Erros", F_PEQ, CINZA, p.x + 700, y);
+        texto_dir(L"Dicas", F_PEQ, CINZA, p.x + 810, y);
+        linha((float)x, (float)y + 24, (float)p.dir() - 30, (float)y + 24, 1, rgb(50, 80, 100));
+        y += 32;
+        int pior = -1, erros_pior = 0;
+        for (int f = 0; f < NUM_FASES; f++) {
+            if (!tent[f]) continue;
+            int er = tent[f] - ac[f];
+            texto(L"Fase " + a_wstr(f + 1) + L" · " + info_fase(f).conteudo, F_TEXTO, BRANCO, x, y);
+            texto_dir(a_wstr(ac[f]) + L" de " + a_wstr(tent[f]), F_TEXTO, ac[f] == tent[f] ? VERDE : BRANCO, p.x + 590, y);
+            texto_dir(a_wstr(er), F_TEXTO, er ? VERMELHO : CINZA, p.x + 700, y);
+            texto_dir(a_wstr(dic[f]), F_TEXTO, dic[f] ? AMARELO : CINZA, p.x + 810, y);
+            if (er > erros_pior) { erros_pior = er; pior = f; }
+            y += 36;
+        }
+        if (historico.empty()) texto(L"Nenhuma pergunta foi respondida nesta partida.", F_TEXTO, CINZA, x, y);
+        y += 14;
+        int total_er = (int)rev_erros.size();
+        texto(L"Respostas enviadas: " + a_wstr((long long)historico.size()) + L"   ·   Erros: " + a_wstr(total_er) + L"   ·   Dicas usadas: " +
+                  a_wstr(dicas_total), F_TEXTO, AMARELO, x, y);
+        y += 44;
+        if (total_er == 0) {
+            paragrafo(L"Nenhum erro nesta partida. Excelente! Se quiser treinar mais, comece outra partida: as questões são sorteadas de novo.", F_TEXTO, VERDE, x, y, larg, 4);
+        } else {
+            paragrafo(L"Ponto a reforçar: " + info_fase(pior).conteudo + L" (" + a_wstr(erros_pior) + (erros_pior == 1 ? L" erro" : L" erros") +
+                          L"). Veja cada erro com a resolução nas próximas páginas.", F_TEXTO, BRANCO, x, y, larg, 4);
+        }
+    } else {
+        const Tentativa& t = historico[rev_erros[rev_pag - 1]];
+        texto(L"ERRO " + a_wstr(rev_pag) + L" DE " + a_wstr((long long)rev_erros.size()), F_GRANDE, VERMELHO, x, p.y + 14);
+        texto(L"Fase " + a_wstr(t.q->fase) + L" · " + info_fase(t.q->fase - 1).conteudo + L" · Questão " + t.q->id, F_PEQ, CINZA, x, p.y + 58);
+        int y = paragrafo(t.q->enunciado, F_TEXTO, BRANCO, x, p.y + 86, larg, 4);
+        y += 6;
+        texto(L"Sua resposta: " + t.dada, F_TITULO, VERMELHO, x, y);
+        texto(L"Resposta correta: " + t.q->resposta, F_TITULO, VERDE, x + 400, y);
+        y += 42;
+        texto(L"Resolução", F_TEXTO, AMARELO, x, y);
+        y = paragrafo(t.q->resolucao, F_TEXTO, rgb(210, 230, 240), x, y + 30, larg, 4);
+        y += 10;
+        texto(L"Como pensar", F_TEXTO, CIANO, x, y);
+        paragrafo(t.q->dica, F_PEQ, rgb(170, 200, 215), x, y + 30, larg, 3);
+    }
+    texto(L"Página " + a_wstr(rev_pag + 1) + L" de " + a_wstr(paginas) + L"   (setas, Enter e Esc também funcionam)", F_PEQ, CINZA, p.cx(), p.baixo() - 90, true);
+    Botao ant = btn_ant, prox = btn_prox;
+    if (rev_pag == 0) ant.cor = rgb(30, 40, 50);
+    if (rev_pag + 1 >= paginas) prox.cor = rgb(30, 40, 50);
+    ant.desenhar(F_TEXTO);
+    btn_voltar.desenhar(F_TEXTO);
+    prox.desenhar(F_TEXTO);
 }
 
 void Jogo::desenhar_botoes_sistema() {
@@ -1066,6 +1236,7 @@ void Jogo::desenhar_vitoria() {
     if (novo_recorde) texto(L"NOVO RECORDE!", F_TITULO, pisca(t, AMARELO, BRANCO), LARGURA / 2, 494, true);
     else texto(L"Recorde: " + a_wstr(dados.melhor_pontos) + L" pts", F_PEQ, CINZA, LARGURA / 2, 498, true);
     btn_novo.desenhar(F_TITULO);
+    btn_revisar.desenhar(F_TITULO);
     texto(L"Protocolo Cronos++ · Projeto 2 - Escape Room de Análise Combinatória · Obrigado por jogar!", F_PEQ, CINZA, LARGURA / 2, 604, true);
 }
 
@@ -1085,6 +1256,7 @@ void Jogo::desenhar_fim() {
         L"Tempo restante: " + formatar_tempo(tt) + L"   (usado: " + formatar_tempo(gasto) + L")"};
     for (int i = 0; i < 4; i++) texto(linhas[i], F_TITULO, BRANCO, r.x + 30, r.y + 18 + i * 36);
     btn_novo.desenhar(F_TITULO);
+    btn_revisar.desenhar(F_TITULO);
 }
 
 void Jogo::desenhar_cinema() {
@@ -1177,10 +1349,11 @@ void Jogo::desenhar() {
     case JOGANDO: desenhar_jogo(); break;
     case ESCOLHA_FINAL: desenhar_escolha(); break;
     case CINEMA: desenhar_cinema(); break;
+    case REVISAO: desenhar_revisao(); break;
     default: desenhar_fim(); break;
     }
     desenhar_botoes_sistema();
-    if (toque.ativo && estado == JOGANDO && !(desafio || notas.aberto || pausado)) toque.desenhar(perto_terminal);
+    if (toque.ativo && estado == JOGANDO && !(desafio || notas.aberto || pausado || dica_aberta)) toque.desenhar(perto_terminal);
     if (debug_toque) {
         circ_borda((float)dbg_x, (float)dbg_y, 22, 3, dbg_vivo ? rgb(255, 60, 60) : rgb(255, 255, 0));
         texto(a_wstr(dbg_x) + L"," + a_wstr(dbg_y) + L"  faixa=" + a_wstr(base_x()) + L" W=" + a_wstr(largura_tela()), F_PEQ,
