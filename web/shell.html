@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#04090f">
+  <title>Protocolo Cronos++: O Bunker Submerso</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #04090f; overflow: hidden; overscroll-behavior: none; }
+    body { display: flex; align-items: center; justify-content: center; color: #8fe9f3; font-family: system-ui, sans-serif; }
+    canvas { display: block; width: min(100vw, 160vh); height: min(100vh, 62.5vw); outline: none; touch-action: none;
+             -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    #carregando { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
+    #barra { width: min(320px, 70vw); height: 6px; background: #12303c; border-radius: 3px; overflow: hidden; }
+    #barra > div { height: 100%; width: 0; background: #46dceb; transition: width .15s; }
+  </style>
+</head>
+<body>
+  <div id="carregando"><div>Protocolo Cronos++</div><div id="barra"><div id="progresso"></div></div><div id="msg">Carregando…</div></div>
+  <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+  <script>
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      setStatus: function (t) {
+        var m = /\((\d+(?:\.\d+)?)\/(\d+)\)/.exec(t);
+        if (m) document.getElementById('progresso').style.width = (100 * m[1] / m[2]) + '%';
+        if (!t) document.getElementById('carregando').style.display = 'none';
+      },
+      onAbort: function () { document.getElementById('msg').textContent = 'Erro ao iniciar o jogo.'; }
+    };
+    // Celular: entra em tela cheia (e trava na horizontal) no primeiro toque; o iPhone nao permite isso em paginas web
+    // (use Compartilhar > Adicionar a Tela de Inicio).
+    (function () {
+      function cheia() {
+        var d = document, e = d.documentElement;
+        if (d.fullscreenElement || d.webkitFullscreenElement) return;
+        var pedir = e.requestFullscreen || e.webkitRequestFullscreen;
+        if (!pedir) return;
+        try {
+          var p = pedir.call(e, { navigationUI: 'hide' });
+          if (p && p.then) p.then(function () {
+            if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {});
+          }).catch(function () {});
+        } catch (err) {}
+      }
+      window.addEventListener('touchend', cheia, true);
+    })();
+    document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

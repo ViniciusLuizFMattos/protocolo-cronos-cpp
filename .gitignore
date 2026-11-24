@@ -1,0 +1,7 @@
+build/
+build-web/
+*.exe
+*.o
+caps/
+__pycache__/
+/SDL2.dll
