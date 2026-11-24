@@ -12,7 +12,7 @@
   <style>
     html, body { margin: 0; width: 100%; height: 100%; background: #04090f; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; }
     body { color: #8fe9f3; font-family: system-ui, sans-serif; }
-    canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100%; outline: none; touch-action: none;
+    canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 62.5vw; outline: none; touch-action: none;
              -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     #carregando { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
     #barra { width: min(320px, 70vw); height: 6px; background: #12303c; border-radius: 3px; overflow: hidden; }
@@ -56,16 +56,22 @@
       function ajustar() {
         var vv = window.visualViewport;
         var w = vv ? vv.width : window.innerWidth, h = vv ? vv.height : window.innerHeight;
-        // o canvas ocupa toda a area visivel; o proprio jogo ajusta a largura da tela (faixas laterais com os controles)
-        c.style.setProperty('width', Math.floor(w) + 'px', 'important');
-        c.style.setProperty('height', Math.floor(h) + 'px', 'important');
+        // O canvas tem exatamente a proporcao da tela do jogo (largura calculada como no C++), centralizado: assim nao ha
+        // margem escondida e a posicao do dedo vira posicao no jogo por simples proporcao.
+        var W = Math.max(1024, Math.min(Math.round(640 * w / h), 1600)); W -= W % 2;
+        var e = Math.min(w / W, h / 640);
+        var cw = Math.floor(W * e), ch = Math.floor(640 * e);
+        c.style.setProperty('width', cw + 'px', 'important');
+        c.style.setProperty('height', ch + 'px', 'important');
+        c.style.setProperty('left', Math.floor((w - cw) / 2) + 'px', 'important');
+        c.style.setProperty('top', Math.floor((h - ch) / 2) + 'px', 'important');
         document.body.style.height = h + 'px';
         window.scrollTo(0, 0);
         if (/[?&]debug/.test(location.search)) {      // abra a pagina com ?debug para ver as medidas na tela
           var d = document.getElementById('dbg');
           if (!d) { d = document.createElement('div'); d.id = 'dbg'; d.style.cssText = 'position:fixed;left:4px;top:4px;z-index:9;font:12px monospace;color:#ff0;background:#000a;padding:3px;pointer-events:none'; document.body.appendChild(d); }
           var r = c.getBoundingClientRect();
-          d.textContent = 'inner ' + innerWidth + 'x' + innerHeight + ' | vv ' + Math.round(w) + 'x' + Math.round(h) + ' | canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' @' + Math.round(r.left) + ',' + Math.round(r.top) + ' | v7';
+          d.textContent = 'inner ' + innerWidth + 'x' + innerHeight + ' | vv ' + Math.round(w) + 'x' + Math.round(h) + ' | canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' @' + Math.round(r.left) + ',' + Math.round(r.top) + ' | v8';
         }
       }
       window.addEventListener('resize', ajustar);
@@ -73,6 +79,24 @@
       if (window.visualViewport) window.visualViewport.addEventListener('resize', ajustar);
       ajustar();
       setInterval(ajustar, 500);     // as barras do Safari aparecem/somem sem avisar
+    })();
+    // Toque: a posicao do dedo e lida aqui, em relacao ao retangulo real do canvas, e entregue ao jogo (cronos_toque).
+    (function () {
+      var c = document.getElementById('canvas');
+      function enviar(tipo, ev) {
+        if (!Module._cronos_toque) return;
+        var r = c.getBoundingClientRect();
+        for (var i = 0; i < ev.changedTouches.length; i++) {
+          var t = ev.changedTouches[i];
+          Module._cronos_toque(tipo, t.identifier, (t.clientX - r.left) / r.width, (t.clientY - r.top) / r.height);
+        }
+        ev.preventDefault();
+      }
+      var o = { passive: false, capture: true };
+      c.addEventListener('touchstart', function (e) { enviar(0, e); }, o);
+      c.addEventListener('touchmove', function (e) { enviar(1, e); }, o);
+      c.addEventListener('touchend', function (e) { enviar(2, e); }, o);
+      c.addEventListener('touchcancel', function (e) { enviar(2, e); }, o);
     })();
     document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
   </script>

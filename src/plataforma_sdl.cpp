@@ -211,6 +211,10 @@ void tratar_eventos(App& a) {
             entrada.mx = e.x; entrada.my = e.y;
             jogo.tratar_evento(e);
             break;
+#ifdef __EMSCRIPTEN__
+        case SDL_FINGERDOWN: case SDL_FINGERMOTION: case SDL_FINGERUP:
+            break;       // no navegador o toque chega por cronos_toque() (JavaScript), que não depende da conversão do SDL
+#else
         case SDL_FINGERDOWN: case SDL_FINGERMOTION: case SDL_FINGERUP: {
             a.ultimo_toque = SDL_GetTicks() ? SDL_GetTicks() : 1;
             float lx, ly;
@@ -240,6 +244,7 @@ void tratar_eventos(App& a) {
             jogo.tratar_evento(e);
             break;
         }
+#endif
         case SDL_WINDOWEVENT:
             if (ev.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || ev.window.event == SDL_WINDOWEVENT_RESIZED) ajustar_largura(a);
             if (ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
@@ -253,6 +258,8 @@ void tratar_eventos(App& a) {
     }
     if (!jogo.rodando) a.encerrar = true;
 }
+
+App* g_app = nullptr;
 
 void um_quadro(void* p) {
     App& a = *static_cast<App*>(p);
@@ -277,6 +284,25 @@ void um_quadro(void* p) {
 
 }  // namespace
 
+#ifdef __EMSCRIPTEN__
+// Chamada pelo JavaScript da página (web/shell.html) a cada toque. tipo: 0 = dedo desceu, 1 = moveu, 2 = subiu.
+// fx, fy: posição do dedo como fração (0 a 1) do retângulo do canvas, que tem a mesma proporção da tela do jogo.
+extern "C" EMSCRIPTEN_KEEPALIVE void cronos_toque(int tipo, int id, double fx, double fy) {
+    if (!g_app || !g_app->jogo) return;
+    App& a = *g_app;
+    a.ultimo_toque = SDL_GetTicks() ? SDL_GetTicks() : 1;
+    Evento e;
+    e.tipo = tipo == 0 ? Ev::MouseDown : (tipo == 2 ? Ev::MouseUp : Ev::MouseMove);
+    e.x = (int)(fx * gfx::largura_tela()) - gfx::base_x();
+    e.y = (int)(fy * ALTURA);
+    e.dedo = id & 0x7FFFFFFF;
+    e.toque = true;
+    entrada.mx = e.x; entrada.my = e.y;
+    a.jogo->dbg_toque(e.x, e.y, tipo != 2);
+    a.jogo->tratar_evento(e);
+}
+#endif
+
 int main(int, char**) {
     SDL_SetMainReady();
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
@@ -287,6 +313,7 @@ int main(int, char**) {
         return 1;
     }
     App app;
+    g_app = &app;
 
     std::string assets = "assets";
 #ifndef __EMSCRIPTEN__
