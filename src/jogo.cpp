@@ -59,6 +59,21 @@ void salvar_dados(Armazenamento* a, const Dados& d) {
 }
 
 // ------------------------------------------------------------------ controles de toque
+void ControlesToque::layout(int faixa) {
+    lateral = faixa >= 150;
+    if (lateral) {                // controles nas faixas laterais, fora do mapa (coordenadas do jogo: x < 0 e x > 1024)
+        raio = (float)std::min(80, faixa / 2 - 14);
+        bx = -faixa / 2.0f; by = ALTURA - 190;
+        ex = LARGURA + faixa / 2.0f; ey = ALTURA - 250; re = (float)std::min(64, faixa / 2 - 12);
+        nx = ex; ny = ALTURA - 100; rn = 44;
+    } else {                      // sobre os cantos do mapa
+        raio = 74; bx = 130; by = ALTURA - 130;
+        ex = LARGURA - 120; ey = ALTURA - 130; re = 58;
+        nx = LARGURA - 250; ny = ALTURA - 80; rn = 38;
+    }
+    soltar_tudo();
+}
+
 void ControlesToque::soltar_tudo() { dedo_joy = -2; vx = vy = 0; kx = bx; ky = by; }
 
 ControlesToque::Acao ControlesToque::apertar(int dedo, int x, int y) {
@@ -851,7 +866,7 @@ void Jogo::desenhar_menu() {
 }
 
 void Jogo::desenhar_intro() {
-    limpar(FUNDO);
+    ret(0, 0, LARGURA, ALTURA, FUNDO);
     for (auto& b : bolhas) circ_borda(b.x, b.y, b.vx, 1, rgb(50, 100, 130));
     const InfoFase& info = info_fase(fase_idx);
     texto(L"FASE " + a_wstr(fase_idx + 1) + L" DE " + a_wstr(NUM_FASES), F_GRANDE, AMARELO, LARGURA / 2, 120, true);
@@ -901,7 +916,7 @@ void Jogo::rotulo(const std::wstring& txt, int cx, int cy, Cor cor, bool pequeno
 
 void Jogo::desenhar_jogo() {
     Fase& f = *fase;
-    limpar(FUNDO);
+    ret(0, 0, LARGURA, ALTURA, FUNDO);
     int ox = 0, oy = 0;
     if (tremor > 0) {
         int amp = (int)(9 * tremor);
@@ -1079,7 +1094,7 @@ void Jogo::desenhar_cinema() {
         ox = rng_global().ent(-amp, amp);
         oy = rng_global().ent(-amp, amp);
     }
-    limpar(PRETO);
+    ret(0, 0, LARGURA, ALTURA, PRETO);
     origem(ox, oy);
     Cor topo = lerp(rgb(6, 16, 32), rgb(70, 160, 210), sup), fundo = lerp(rgb(1, 4, 10), rgb(16, 60, 110), sup);
     for (int i = 0; i < ALTURA; i += 20) ret(0, i, LARGURA, 20, lerp(topo, fundo, (float)i / ALTURA));
@@ -1148,6 +1163,11 @@ void Jogo::desenhar_cinema() {
 void Jogo::desenhar() {
     alvo_tela();
     origem(0, 0);
+    if (base_x() > 0) {                      // tela mais larga que 16:10: faixas laterais escuras com divisórias
+        limpar(rgb(4, 9, 16));
+        ret(-2, 0, 2, ALTURA, rgb(30, 70, 90));
+        ret(LARGURA, 0, 2, ALTURA, rgb(30, 70, 90));
+    }
     switch (estado) {
     case MENU: desenhar_menu(); break;
     case INTRO: desenhar_intro(); break;

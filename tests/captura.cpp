@@ -1,5 +1,6 @@
 // Gera capturas (BMP) de cada tela do jogo para conferência visual: captura.exe <pasta>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include "../src/audio.h"
 #include "../src/jogo.h"
@@ -17,6 +18,7 @@ int main(int argc, char** argv) {
     Audio som;
     som.iniciar(false);
     Jogo j(som, nullptr);
+    if (argc > 2) { gfx::definir_largura(std::atoi(argv[2])); j.definir_faixa(gfx::base_x()); j.toque.ativo = true; }
     passos(j, 30);
     foto(j, pasta, "01_menu");
     tecla(j, K_RETURN);

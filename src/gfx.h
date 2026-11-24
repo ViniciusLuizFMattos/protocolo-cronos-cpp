@@ -40,6 +40,11 @@ struct Superficie {
 enum Fonte { F_PEQ, F_TEXTO, F_GRANDE, F_TITULO, F_GIGANTE, F_HUD_L, F_HUD_V, F_MONO, F_N };
 
 bool iniciar(const std::string& pasta_assets);   // cria o buffer da tela e carrega as fontes de <pasta>/fonts
+// Largura da tela: 1024 (proporção 16:10) ou maior para preencher telas mais largas; o jogo fica centralizado e as
+// faixas laterais recebem os controles de toque. Devolve true se mudou.
+bool definir_largura(int w);
+int largura_tela();
+int base_x();                         // largura de cada faixa lateral ((largura - 1024) / 2)
 const uint32_t* pixels();             // framebuffer 1024x640, 0x00RRGGBB (a plataforma apresenta isto)
 void alvo_tela();                     // desenha na tela principal
 void alvo(Superficie& s);             // desenha numa superfície própria (sem texto)

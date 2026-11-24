@@ -15,6 +15,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #endif
 
 namespace {
@@ -65,6 +66,7 @@ struct App {
     std::unique_ptr<Armazenamento> arm;
     std::unique_ptr<Jogo> jogo;
     Uint64 anterior = 0;
+    int quadros = 0;
     Uint32 ultimo_toque = 0;      // ms; ignora o mouse "fantasma" que alguns navegadores geram depois de um toque
     bool encerrar = false;
 };
@@ -140,6 +142,32 @@ void alternar_tela_cheia(App& a) {
     SDL_SetWindowFullscreen(a.janela, cheia ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
 }
 
+// A tela do jogo é 1024x640; em janelas mais largas que 16:10 ela cresce para os lados (faixas com os controles de toque).
+void ajustar_largura(App& a, bool forcar = false) {
+    int w = 0, h = 0;
+#ifdef __EMSCRIPTEN__
+    double cw = 0, ch = 0;
+    emscripten_get_element_css_size("#canvas", &cw, &ch);
+    w = (int)cw; h = (int)ch;
+    int sw = 0, sh = 0;
+    SDL_GetWindowSize(a.janela, &sw, &sh);
+    if (w > 0 && h > 0 && (sw != w || sh != h)) SDL_SetWindowSize(a.janela, w, h);     // o SDL acompanha o tamanho CSS do canvas
+#else
+    SDL_GetWindowSize(a.janela, &w, &h);
+#endif
+    if (w <= 0 || h <= 0) return;
+    int largura = (int)std::lround(ALTURA * (double)w / h);
+    largura = std::max(LARGURA, std::min(largura, 1600)) & ~1;
+    if (!forcar && std::abs(largura - gfx::largura_tela()) < 8) return;
+    gfx::definir_largura(largura);
+    if (a.textura) SDL_DestroyTexture(a.textura);
+    a.textura = SDL_CreateTexture(a.render, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, gfx::largura_tela(), ALTURA);
+    SDL_RenderSetLogicalSize(a.render, gfx::largura_tela(), ALTURA);
+    if (a.jogo) a.jogo->definir_faixa(gfx::base_x());
+}
+
+int gx(int x) { return x - gfx::base_x(); }      // coordenada lógica da tela -> coordenada do jogo (0..1024 no mapa)
+
 void tratar_eventos(App& a) {
     Jogo& jogo = *a.jogo;
     SDL_Event ev;
@@ -171,7 +199,7 @@ void tratar_eventos(App& a) {
             if (ev.button.which == SDL_TOUCH_MOUSEID) break;
             e.tipo = ev.type == SDL_MOUSEBUTTONDOWN ? Ev::MouseDown : Ev::MouseUp;
             e.botao = ev.button.button;
-            e.x = ev.button.x; e.y = ev.button.y;
+            e.x = gx(ev.button.x); e.y = ev.button.y;
             entrada.mx = e.x; entrada.my = e.y;
             jogo.tratar_evento(e);
             break;
@@ -179,7 +207,7 @@ void tratar_eventos(App& a) {
             if (SDL_GetTicks() - a.ultimo_toque < 700 && a.ultimo_toque) break;
             if (ev.motion.which == SDL_TOUCH_MOUSEID) break;
             e.tipo = Ev::MouseMove;
-            e.x = ev.motion.x; e.y = ev.motion.y;
+            e.x = gx(ev.motion.x); e.y = ev.motion.y;
             entrada.mx = e.x; entrada.my = e.y;
             jogo.tratar_evento(e);
             break;
@@ -190,7 +218,7 @@ void tratar_eventos(App& a) {
             float lx, ly;
             SDL_RenderWindowToLogical(a.render, (int)(ev.tfinger.x * w), (int)(ev.tfinger.y * h), &lx, &ly);
             e.tipo = ev.type == SDL_FINGERDOWN ? Ev::MouseDown : (ev.type == SDL_FINGERUP ? Ev::MouseUp : Ev::MouseMove);
-            e.x = (int)lx; e.y = (int)ly;
+            e.x = gx((int)lx); e.y = (int)ly;
             e.dedo = (int)(ev.tfinger.fingerId & 0x7FFFFFFF);
             e.toque = true;
             entrada.mx = e.x; entrada.my = e.y;
@@ -198,6 +226,7 @@ void tratar_eventos(App& a) {
             break;
         }
         case SDL_WINDOWEVENT:
+            if (ev.window.event == SDL_WINDOWEVENT_SIZE_CHANGED || ev.window.event == SDL_WINDOWEVENT_RESIZED) ajustar_largura(a);
             if (ev.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
                 std::fill(std::begin(entrada.tec), std::end(entrada.tec), false);
                 jogo.perdeu_foco();
@@ -212,6 +241,7 @@ void tratar_eventos(App& a) {
 
 void um_quadro(void* p) {
     App& a = *static_cast<App*>(p);
+    if (++a.quadros % 20 == 0) ajustar_largura(a);      // o tamanho pode mudar sem aviso (barras do navegador, rotação)
     tratar_eventos(a);
     Uint64 agora = SDL_GetPerformanceCounter();
     float dt = (float)((agora - a.anterior) / (double)SDL_GetPerformanceFrequency());
@@ -219,7 +249,7 @@ void um_quadro(void* p) {
     if (dt > 0.05f) dt = 0.05f;
     a.jogo->atualizar(dt);
     a.jogo->desenhar();
-    SDL_UpdateTexture(a.textura, nullptr, gfx::pixels(), LARGURA * 4);
+    SDL_UpdateTexture(a.textura, nullptr, gfx::pixels(), gfx::largura_tela() * 4);
     SDL_RenderClear(a.render);
     SDL_RenderCopy(a.render, a.textura, nullptr, nullptr);
     SDL_RenderPresent(a.render);
@@ -292,6 +322,7 @@ int main(int, char**) {
     else app.som.ativo = false;
 
     app.jogo.reset(new Jogo(app.som, app.arm.get()));
+    ajustar_largura(app, true);
     app.anterior = SDL_GetPerformanceCounter();
 
 #ifdef __EMSCRIPTEN__

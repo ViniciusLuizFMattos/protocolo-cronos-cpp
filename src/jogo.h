@@ -120,9 +120,11 @@ struct ControlesToque {
     bool ativo = false;
     int dedo_joy = -2;
     float vx = 0, vy = 0, kx = 130, ky = ALTURA - 130;
-    const float raio = 74, bx = 130, by = ALTURA - 130;
-    const float ex = LARGURA - 120, ey = ALTURA - 130, re = 58;
-    const float nx = LARGURA - 250, ny = ALTURA - 80, rn = 38;
+    float raio = 74, bx = 130, by = ALTURA - 130;
+    float ex = LARGURA - 120, ey = ALTURA - 130, re = 58;
+    float nx = LARGURA - 250, ny = ALTURA - 80, rn = 38;
+    bool lateral = false;
+    void layout(int faixa);       // faixa = largura de cada faixa lateral (0 = controles sobre o mapa)
     void soltar_tudo();
     Acao apertar(int dedo, int x, int y);
     void mover(int dedo, int x, int y);
@@ -141,6 +143,7 @@ public:
     void tratar_evento(const Evento& e);
     void atualizar(float dt);
     void desenhar();
+    void definir_faixa(int faixa) { toque.layout(faixa); }   // a tela ficou mais larga/estreita
     void perdeu_foco();      // pausa automaticamente ao sair da janela
     bool rodando = true;
 

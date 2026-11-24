@@ -12,7 +12,7 @@
   <style>
     html, body { margin: 0; width: 100%; height: 100%; background: #04090f; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; }
     body { color: #8fe9f3; font-family: system-ui, sans-serif; }
-    canvas { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100vw; height: 62.5vw; max-height: 100%; outline: none; touch-action: none;
+    canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100%; outline: none; touch-action: none;
              -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     #carregando { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
     #barra { width: min(320px, 70vw); height: 6px; background: #12303c; border-radius: 3px; overflow: hidden; }
@@ -56,17 +56,16 @@
       function ajustar() {
         var vv = window.visualViewport;
         var w = vv ? vv.width : window.innerWidth, h = vv ? vv.height : window.innerHeight;
-        var e = Math.min(w / 1024, h / 640);
-        c.style.setProperty('width', Math.floor(1024 * e) + 'px', 'important');
-        c.style.setProperty('height', Math.floor(640 * e) + 'px', 'important');
-        c.style.setProperty('max-height', 'none', 'important');
+        // o canvas ocupa toda a area visivel; o proprio jogo ajusta a largura da tela (faixas laterais com os controles)
+        c.style.setProperty('width', Math.floor(w) + 'px', 'important');
+        c.style.setProperty('height', Math.floor(h) + 'px', 'important');
         document.body.style.height = h + 'px';
         window.scrollTo(0, 0);
         if (/[?&]debug/.test(location.search)) {      // abra a pagina com ?debug para ver as medidas na tela
           var d = document.getElementById('dbg');
           if (!d) { d = document.createElement('div'); d.id = 'dbg'; d.style.cssText = 'position:fixed;left:4px;top:4px;z-index:9;font:12px monospace;color:#ff0;background:#000a;padding:3px;pointer-events:none'; document.body.appendChild(d); }
           var r = c.getBoundingClientRect();
-          d.textContent = 'inner ' + innerWidth + 'x' + innerHeight + ' | vv ' + Math.round(w) + 'x' + Math.round(h) + ' | canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' @' + Math.round(r.left) + ',' + Math.round(r.top) + ' | v3';
+          d.textContent = 'inner ' + innerWidth + 'x' + innerHeight + ' | vv ' + Math.round(w) + 'x' + Math.round(h) + ' | canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' @' + Math.round(r.left) + ',' + Math.round(r.top) + ' | v5';
         }
       }
       window.addEventListener('resize', ajustar);

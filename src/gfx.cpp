@@ -21,7 +21,10 @@ namespace gfx {
 namespace {
 struct Alvo { uint32_t* px = nullptr; int w = 0, h = 0; };
 Alvo A, TELA;
-int TX = 0, TY = 0;
+int TX = 0, TY = 0;      // translação efetiva (origem do usuário + centralização na tela larga)
+int OX = 0, OY = 0, BASE = 0;
+
+inline void recalc() { TX = OX + (A.px == TELA.px ? BASE : 0); TY = OY; }
 std::vector<uint32_t> buffer_tela;
 
 struct Glifo { std::vector<uint8_t> cov; int w = 0, h = 0, xoff = 0, yoff = 0; float avanco = 0; };
@@ -141,9 +144,23 @@ bool iniciar(const std::string& pasta_assets) {
 }
 
 const uint32_t* pixels() { return TELA.px; }
-void alvo_tela() { sync(); A = TELA; }
-void alvo(Superficie& s) { sync(); A.px = s.px.data(); A.w = s.w; A.h = s.h; }
-void origem(int x, int y) { TX = x; TY = y; }
+void alvo_tela() { sync(); A = TELA; recalc(); }
+void alvo(Superficie& s) { sync(); A.px = s.px.data(); A.w = s.w; A.h = s.h; recalc(); }
+void origem(int x, int y) { OX = x; OY = y; recalc(); }
+
+bool definir_largura(int w) {
+    if (w < LARGURA) w = LARGURA;
+    if (w == TELA.w) return false;
+    bool em_tela = A.px == TELA.px;
+    buffer_tela.assign((size_t)w * ALTURA, 0);
+    TELA.px = buffer_tela.data(); TELA.w = w; TELA.h = ALTURA;
+    BASE = (w - LARGURA) / 2;
+    if (em_tela) A = TELA;
+    recalc();
+    return true;
+}
+int largura_tela() { return TELA.w; }
+int base_x() { return BASE; }
 
 void limpar(Cor c) {
     sync();
@@ -428,15 +445,15 @@ bool salvar_bmp(const char* caminho) {
     if (!f) return false;
     unsigned char h[54] = {'B', 'M'};
     auto w32 = [&](int off, uint32_t v) { for (int i = 0; i < 4; i++) h[off + i] = (unsigned char)(v >> (8 * i)); };
-    w32(2, 54 + LARGURA * ALTURA * 4);
+    w32(2, 54 + TELA.w * ALTURA * 4);
     w32(10, 54);
     w32(14, 40);
-    w32(18, LARGURA);
+    w32(18, TELA.w);
     w32(22, (uint32_t)(-ALTURA));
     h[26] = 1;
     h[28] = 32;
     std::fwrite(h, 1, 54, f);
-    std::fwrite(TELA.px, 4, (size_t)LARGURA * ALTURA, f);
+    std::fwrite(TELA.px, 4, (size_t)TELA.w * ALTURA, f);
     std::fclose(f);
     return true;
 }
