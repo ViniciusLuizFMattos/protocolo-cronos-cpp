@@ -4,11 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#04090f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cronos++">
   <title>Protocolo Cronos++: O Bunker Submerso</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #04090f; overflow: hidden; overscroll-behavior: none; }
-    body { display: flex; align-items: center; justify-content: center; color: #8fe9f3; font-family: system-ui, sans-serif; }
-    canvas { display: block; width: min(100vw, 160vh); height: min(100vh, 62.5vw); outline: none; touch-action: none;
+    html, body { margin: 0; width: 100%; height: 100%; background: #04090f; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; }
+    body { color: #8fe9f3; font-family: system-ui, sans-serif; }
+    canvas { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 100vw; height: 62.5vw; max-height: 100%; outline: none; touch-action: none;
              -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     #carregando { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
     #barra { width: min(320px, 70vw); height: 6px; background: #12303c; border-radius: 3px; overflow: hidden; }
@@ -44,6 +48,26 @@
         } catch (err) {}
       }
       window.addEventListener('touchend', cheia, true);
+    })();
+    // O Safari do iOS inclui as barras do navegador em 100vh e corta a parte de baixo do jogo.
+    // Por isso o tamanho do canvas e calculado em pixels a partir da area realmente visivel (visualViewport).
+    (function () {
+      var c = document.getElementById('canvas');
+      function ajustar() {
+        var vv = window.visualViewport;
+        var w = vv ? vv.width : window.innerWidth, h = vv ? vv.height : window.innerHeight;
+        var e = Math.min(w / 1024, h / 640);
+        c.style.setProperty('width', Math.floor(1024 * e) + 'px', 'important');
+        c.style.setProperty('height', Math.floor(640 * e) + 'px', 'important');
+        c.style.setProperty('max-height', 'none', 'important');
+        document.body.style.height = h + 'px';
+        window.scrollTo(0, 0);
+      }
+      window.addEventListener('resize', ajustar);
+      window.addEventListener('orientationchange', function () { setTimeout(ajustar, 200); });
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', ajustar);
+      ajustar();
+      setInterval(ajustar, 500);     // as barras do Safari aparecem/somem sem avisar
     })();
     document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
   </script>

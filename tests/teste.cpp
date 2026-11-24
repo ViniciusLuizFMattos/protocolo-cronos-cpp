@@ -190,6 +190,44 @@ static void testar_derrota() {
     CHECK(vistos.size() == 20, "baralho sem repeticao");
 }
 
+
+// Toque (celular): abre o terminal, as notas, calcula e usa o resultado na resposta, tudo por toques.
+static void toque(Jogo& j, int x, int y, int dedo = 5) {
+    Evento d; d.tipo = Ev::MouseDown; d.x = x; d.y = y; d.dedo = dedo; d.toque = true;
+    j.tratar_evento(d);
+    j.atualizar(1.0f / 60);
+    Evento u = d; u.tipo = Ev::MouseUp;
+    j.tratar_evento(u);
+    j.atualizar(1.0f / 60);
+}
+static void toque_tecla(Jogo& j, const wchar_t* valor) {
+    for (auto& k : j.notas.teclado.teclas)
+        if (k.valor == valor) { toque(j, k.rect.cx(), k.rect.cy()); return; }
+    CHECK(false, "tecla do bloco de notas existe");
+}
+
+static void testar_toque_notas() {
+    Audio som;
+    som.iniciar(false);
+    Jogo j(som, nullptr);
+    tecla(j, K_RETURN);
+    passar_intro(j);
+    colocar_perto(j, j.fase->terminais[0]);
+    toque(j, 1, 1);                       // primeiro toque liga os controles de toque
+    tecla(j, 'E');
+    CHECK(j.desafio != nullptr, "terminal aberto");
+    toque(j, 250, 500);                   // botao "Notas [N]" do terminal
+    CHECK(j.notas.aberto, "toque no botao Notas abre o bloco de notas");
+    toque_tecla(j, L"8"); toque_tecla(j, L"*"); toque_tecla(j, L"7");
+    toque_tecla(j, L"CALCULAR");
+    CHECK(j.notas.resultado_inteiro() == L"56", "calculo por toque");
+    j.atualizar(1.0f / 60);
+    CHECK(j.notas.pode_responder, "notas podem responder");
+    toque_tecla(j, L"RESPOSTA");
+    CHECK(j.desafio && j.desafio->entrada == L"56", "Usar na resposta coloca 56 no terminal");
+    CHECK(!j.notas.aberto, "notas fecham depois de usar a resposta");
+}
+
 int main() {
     gfx::iniciar("assets");
     testar_banco();
@@ -197,6 +235,7 @@ int main() {
     testar_mapas();
     testar_fluxo();
     testar_derrota();
+    testar_toque_notas();
     std::printf("%d verificacoes, %d falhas\n", total, falhas);
     return falhas ? 1 : 0;
 }

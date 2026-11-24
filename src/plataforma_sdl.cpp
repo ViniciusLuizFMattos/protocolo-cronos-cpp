@@ -65,6 +65,7 @@ struct App {
     std::unique_ptr<Armazenamento> arm;
     std::unique_ptr<Jogo> jogo;
     Uint64 anterior = 0;
+    Uint32 ultimo_toque = 0;      // ms; ignora o mouse "fantasma" que alguns navegadores geram depois de um toque
     bool encerrar = false;
 };
 
@@ -166,6 +167,7 @@ void tratar_eventos(App& a) {
             enviar_texto(jogo, ev.text.text);
             break;
         case SDL_MOUSEBUTTONDOWN: case SDL_MOUSEBUTTONUP:
+            if (SDL_GetTicks() - a.ultimo_toque < 700 && a.ultimo_toque) break;
             if (ev.button.which == SDL_TOUCH_MOUSEID) break;
             e.tipo = ev.type == SDL_MOUSEBUTTONDOWN ? Ev::MouseDown : Ev::MouseUp;
             e.botao = ev.button.button;
@@ -174,6 +176,7 @@ void tratar_eventos(App& a) {
             jogo.tratar_evento(e);
             break;
         case SDL_MOUSEMOTION:
+            if (SDL_GetTicks() - a.ultimo_toque < 700 && a.ultimo_toque) break;
             if (ev.motion.which == SDL_TOUCH_MOUSEID) break;
             e.tipo = Ev::MouseMove;
             e.x = ev.motion.x; e.y = ev.motion.y;
@@ -181,6 +184,7 @@ void tratar_eventos(App& a) {
             jogo.tratar_evento(e);
             break;
         case SDL_FINGERDOWN: case SDL_FINGERMOTION: case SDL_FINGERUP: {
+            a.ultimo_toque = SDL_GetTicks() ? SDL_GetTicks() : 1;
             int w, h;
             SDL_GetWindowSize(a.janela, &w, &h);
             float lx, ly;
