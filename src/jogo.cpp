@@ -62,10 +62,13 @@ void salvar_dados(Armazenamento* a, const Dados& d) {
 void ControlesToque::layout(int faixa) {
     lateral = faixa >= 150;
     if (lateral) {                // controles nas faixas laterais, fora do mapa (coordenadas do jogo: x < 0 e x > 1024)
-        raio = (float)std::min(80, faixa / 2 - 14);
-        bx = -faixa / 2.0f; by = ALTURA - 190;
-        ex = LARGURA + faixa / 2.0f; ey = ALTURA - 250; re = (float)std::min(64, faixa / 2 - 12);
-        nx = ex; ny = ALTURA - 100; rn = 44;
+        // mais perto do mapa do que do meio da faixa: longe das bordas do aparelho (cantos arredondados, gestos do sistema)
+        float perto = faixa * 0.36f;
+        raio = std::min(80.0f, perto + 6);
+        bx = -perto; by = ALTURA - 190;
+        re = std::min(64.0f, perto + 6);
+        ex = LARGURA + perto; ey = ALTURA - 250;
+        nx = ex; ny = ALTURA - 100; rn = std::min(44.0f, re * 0.7f);
     } else {                      // sobre os cantos do mapa
         raio = 74; bx = 130; by = ALTURA - 130;
         ex = LARGURA - 120; ey = ALTURA - 130; re = 58;

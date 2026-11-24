@@ -65,7 +65,7 @@
           var d = document.getElementById('dbg');
           if (!d) { d = document.createElement('div'); d.id = 'dbg'; d.style.cssText = 'position:fixed;left:4px;top:4px;z-index:9;font:12px monospace;color:#ff0;background:#000a;padding:3px;pointer-events:none'; document.body.appendChild(d); }
           var r = c.getBoundingClientRect();
-          d.textContent = 'inner ' + innerWidth + 'x' + innerHeight + ' | vv ' + Math.round(w) + 'x' + Math.round(h) + ' | canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' @' + Math.round(r.left) + ',' + Math.round(r.top) + ' | v6';
+          d.textContent = 'inner ' + innerWidth + 'x' + innerHeight + ' | vv ' + Math.round(w) + 'x' + Math.round(h) + ' | canvas ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' @' + Math.round(r.left) + ',' + Math.round(r.top) + ' | v7';
         }
       }
       window.addEventListener('resize', ajustar);
