@@ -17,7 +17,6 @@ namespace {
 const Cor BRANCO = rgb(235, 240, 245), CINZA = rgb(140, 155, 170), CIANO = rgb(70, 220, 235),
           VERDE = rgb(70, 235, 130), VERMELHO = rgb(245, 70, 60), AMARELO = rgb(250, 200, 60),
           FUNDO = rgb(6, 12, 20), PRETO = rgb(0, 0, 0);
-const float CINEMA_TOTAL = 16.0f;
 
 bool tec(const Evento& e, int k) { return e.tipo == Ev::Tecla && e.tecla == k; }
 bool tec2(const Evento& e, int a, int b) { return e.tipo == Ev::Tecla && (e.tecla == a || e.tecla == b); }
@@ -44,6 +43,7 @@ void carregar_dados(Armazenamento* a, Dados& d) {
         else if (k == "melhor_tempo") d.melhor_tempo = std::atoi(v.c_str());
         else if (k == "partidas") d.partidas = std::atoi(v.c_str());
         else if (k == "vitorias") d.vitorias = std::atoi(v.c_str());
+        else if (k == "finais") d.finais = std::atoi(v.c_str());
         else if (k == "volume") d.volume = limitar((float)std::atof(v.c_str()), 0.f, 1.f);
         else if (k == "mudo") d.mudo = std::atoi(v.c_str()) != 0;
         else if (k == "melhor_letra" && !v.empty() && v[0] >= 'A' && v[0] <= 'Z') d.melhor_letra = std::wstring(1, (wchar_t)v[0]);
@@ -53,8 +53,8 @@ void carregar_dados(Armazenamento* a, Dados& d) {
 void salvar_dados(Armazenamento* a, const Dados& d) {
     if (!a) return;
     char buf[256];
-    std::snprintf(buf, sizeof buf, "melhor_pontos=%d\nmelhor_tempo=%d\nmelhor_letra=%c\npartidas=%d\nvitorias=%d\nvolume=%.2f\nmudo=%d\n",
-                  d.melhor_pontos, d.melhor_tempo, (char)d.melhor_letra[0], d.partidas, d.vitorias, d.volume, d.mudo ? 1 : 0);
+    std::snprintf(buf, sizeof buf, "melhor_pontos=%d\nmelhor_tempo=%d\nmelhor_letra=%c\npartidas=%d\nvitorias=%d\nvolume=%.2f\nmudo=%d\nfinais=%d\n",
+                  d.melhor_pontos, d.melhor_tempo, (char)d.melhor_letra[0], d.partidas, d.vitorias, d.volume, d.mudo ? 1 : 0, d.finais);
     a->gravar(buf);
 }
 
@@ -437,8 +437,6 @@ Jogo::Jogo(Audio& s, Armazenamento* armazenamento) : som(s), arm(armazenamento) 
     btn_ant = Botao(Ret(80, 548, 220, 44), L"< Anterior");
     btn_voltar = Botao(Ret(402, 548, 220, 44), L"Voltar [Esc]", rgb(90, 50, 30));
     btn_prox = Botao(Ret(724, 548, 220, 44), L"Próximo >");
-    btn_fugir = Botao(Ret(90, 360, 400, 120), L"1 · FUGIR NA CÁPSULA", rgb(20, 80, 60));
-    btn_sobrecarga = Botao(Ret(534, 360, 400, 120), L"2 · SOBRECARREGAR O REATOR", rgb(110, 40, 30));
     btn_continuar = Botao(Ret(LARGURA / 2 - 230, 400, 220, 56), L"CONTINUAR");
     btn_menu = Botao(Ret(LARGURA / 2 + 10, 400, 220, 56), L"MENU", rgb(90, 50, 30));
     r_som = Ret(LARGURA - 48, 12, 40, 40);
@@ -453,6 +451,8 @@ void Jogo::salvar() {
 }
 
 void Jogo::novo_jogo(bool iniciar) {
+    som.parar_efeitos();
+    som.musica_de_fundo(1);
     tempo = (float)TEMPO_TOTAL;
     erros = acertos_total = 0;
     baralhos.clear();
@@ -555,6 +555,8 @@ void Jogo::encerrar(Estado e, const std::wstring& motivo) {
     notas.aberto = false;
     tremor = 0;
     dados.partidas++;
+    som.parar_efeitos();
+    som.musica_de_fundo(1);
     if (e == DERROTA) {
         som.tocar("derrota");
     } else {
@@ -631,7 +633,7 @@ bool Jogo::r_volume(Ret& r) const {
         r = Ret(LARGURA / 2 - 200, 486, 400, 44);
         return true;
     }
-    if (estado == INTRO || estado == CINEMA || estado == REVISAO) return false;
+    if (estado == INTRO || estado == CINEMA || estado == REVISAO || estado == ESCOLHA_FINAL) return false;
     r = Ret(LARGURA - 8 - 160, 58, 160, 38);
     return true;
 }
@@ -715,11 +717,14 @@ void Jogo::tratar_evento(const Evento& e) {
         else if (tec(e, 'E')) interagir();
         break;
     case ESCOLHA_FINAL:
-        if (tec(e, '1') || btn_fugir.clicado(e)) iniciar_cinema(0);
-        else if (tec(e, '2') || btn_sobrecarga.clicado(e)) iniciar_cinema(1);
+        for (int i = 0; i < cinema::NUM_FINAIS; i++)
+            if (tec(e, '1' + i) || (clique && carta_final(i).contem(e.x, e.y))) { escolher_final(i); break; }
         break;
     case CINEMA:
-        if ((enter_ou_espaco || tec(e, K_ESC) || clique) && cinema_t > 1.0f) encerrar(VITORIA);
+        if ((enter_ou_espaco || tec(e, K_ESC) || clique) && cinema_t > 1.0f) {
+            if (cinema_t < cinema::INICIO_CARTAO) cinema_t = cinema::INICIO_CARTAO;       // 1º toque: pula para o cartão final
+            else if (cinema_t >= cinema::INICIO_CARTAO + 1.5f) encerrar(VITORIA);
+        }
         break;
     case VITORIA:
     case DERROTA:
@@ -818,84 +823,21 @@ void Jogo::iniciar_cinema(int final) {
     final_escolhido = final;
     estado = CINEMA;
     cinema_t = 0;
-    cinema_eventos.clear();
-    cinema_bolhas.clear();
-    destrocos.clear();
     tremor = 0;
     desafio.reset();
     notas.aberto = false;
-    som.tocar("porta", 0.45f);
-}
-
-void Jogo::capsula_pos(float& x, float& y) const {
-    float y0 = 390;
-    float u = std::min(1.0f, cinema_t / 5.0f);
-    float k = 1 - (1 - u) * (1 - u) * (1 - u);
-    x = 512;
-    y = y0 + (250 - y0) * k + std::sin(cinema_t * 2.2f) * 4;
+    dica_aberta = false;
+    dados.finais |= 1 << final;
+    salvar();
+    som.parar_efeitos();
+    som.musica_de_fundo(0.12f);
+    som.tocar_trilha(final);
 }
 
 void Jogo::atualizar_cinema(float dt) {
+    float antes = cinema_t;
     cinema_t += dt;
-    float tt = cinema_t;
-    bool sobrecarga = final_escolhido == 1;
-    Rng& r = rng_global();
-    if (sobrecarga && tt >= 4.5f && !cinema_eventos.count("boom")) {
-        cinema_eventos.insert("boom");
-        som.tocar("explosao", 0.7f);
-        tremor = 1.3f;
-        float sy = estacao_y();
-        destrocos.clear();
-        for (int i = 0; i < 26; i++)
-            destrocos.push_back({512 + r.entre(-160, 160), sy + r.entre(0, 80), r.entre(-260, 260), r.entre(-220, 40),
-                                 (float)r.ent(8, 26), (float)r.ent(5, 14), r.entre(0, 6)});
-    }
-    if (!sobrecarga && tt >= 6.5f && !cinema_eventos.count("ping")) { cinema_eventos.insert("ping"); som.tocar("bipe", 0.25f); }
-    if (tt >= 11.5f && !cinema_eventos.count("sol")) { cinema_eventos.insert("sol"); som.tocar("fase", 0.4f); }
-    tremor = std::max(0.f, tremor - dt);
-    for (auto& d : destrocos) {
-        d.x += d.vx * dt;
-        d.y += d.vy * dt + 26 * dt;
-        d.vy += 90 * dt;
-        d.ang += dt * 3;
-    }
-    float cx, cy;
-    capsula_pos(cx, cy);
-    if (r.f() < 0.7f) cinema_bolhas.push_back({cx + r.entre(-7, 7), cy + 34, r.entre(2, 5), 0, 0, 0});
-    for (auto& b : cinema_bolhas) { b.y += 95 * dt; b.x += std::sin(tt * 3 + b.vx) * 10 * dt; }
-    cinema_bolhas.erase(std::remove_if(cinema_bolhas.begin(), cinema_bolhas.end(), [](const Particula& b) { return b.y >= ALTURA + 10; }),
-                        cinema_bolhas.end());
-    if (cinema_bolhas.size() > 140) cinema_bolhas.erase(cinema_bolhas.begin(), cinema_bolhas.end() - 140);
-}
-
-void Jogo::desenhar_estacao(float sy, int luzes, float brilho) {
-    int y = (int)sy;
-    for (int x : {360, 512, 664}) ret(x - 9, y + 90, 18, 400, rgb(14, 20, 30));          // pilares até o fundo
-    for (int x : {402, 622}) {                                                            // cúpulas
-        circ((float)x, (float)y + 8, 44, rgb(30, 40, 54));
-        circ_borda((float)x, (float)y + 8, 44, 2, rgb(46, 60, 78));
-    }
-    Ret corpo(512 - 220, y, 440, 110);
-    rret(corpo, 20, rgb(26, 34, 46));
-    rret_borda(corpo, 20, 2, rgb(52, 68, 88));
-    for (int i = 0; i < 12; i++)                                                           // janelas
-        rret(corpo.x + 28 + i * 33, y + 34, 16, 10, 2, i < luzes ? rgb(250, 214, 120) : rgb(16, 22, 30));
-    if (brilho > 0) {                                                                      // núcleo do reator
-        float r = 16 + 10 * brilho;
-        circ(512, (float)y + 74, r, rgb(255, (int)(120 + 100 * brilho), 40));
-        circ(512, (float)y + 74, std::max(4.f, r / 2), rgb(255, 240, 200));
-    }
-}
-
-void Jogo::desenhar_capsula(float cx, float cy) {
-    float chama = 10 + 6 * std::fabs(std::sin(cinema_t * 30));
-    Pt fogo[3] = {{cx - 8, cy + 30}, {cx + 8, cy + 30}, {cx, cy + 30 + chama}};
-    poligono(fogo, 3, rgb(255, 170, 60));
-    elipse((int)cx - 18, (int)cy - 32, 36, 64, rgb(210, 220, 232));
-    elipse_borda((int)cx - 18, (int)cy - 32, 36, 64, 2, rgb(120, 135, 150));
-    ret((int)cx - 18, (int)cy + 4, 36, 6, rgb(250, 150, 30));
-    circ(cx, cy - 10, 8, rgb(60, 200, 230));
-    circ(cx - 3, cy - 13, 2, rgb(220, 255, 255));
+    cinema::sons(som, final_escolhido, antes, cinema_t);
 }
 
 // ---------------------------------------------------------------- desenho
@@ -930,7 +872,7 @@ void Jogo::desenhar_menu() {
     for (int i = 0; i < 3; i++) texto(linhas[i], F_PEQ, BRANCO, c.x + 20, c.y + 46 + i * 28);
     if (dados.melhor_pontos > 0)
         texto(L"Recorde: " + a_wstr(dados.melhor_pontos) + L" pts (classe " + dados.melhor_letra + L")  ·  Vitórias: " +
-                  a_wstr(dados.vitorias) + L"/" + a_wstr(dados.partidas),
+                  a_wstr(dados.vitorias) + L"/" + a_wstr(dados.partidas) + L"  ·  Finais: " + a_wstr(finais_descobertos()) + L"/" + a_wstr(cinema::NUM_FINAIS),
               F_PEQ, VERDE, LARGURA / 2, 540, true);
     btn_iniciar.desenhar(F_TITULO);
 }
@@ -1183,17 +1125,33 @@ void Jogo::desenhar_volume() {
 
 void Jogo::desenhar_escolha() {
     desenhar_fundo_menu();
-    texto(L"A CÁPSULA ESTÁ PRONTA", F_GIGANTE, VERDE, LARGURA / 2, 40, true);
-    paragrafo(L"Todos os protocolos foram quebrados. O reator de Acheron-4 está instável e o organismo "
-              L"ainda se agita do outro lado das paredes. Você tem apenas uma decisão a tomar:",
-              F_TEXTO, BRANCO, 120, 150, LARGURA - 240, 4, true);
-    btn_fugir.desenhar(F_TITULO);
-    btn_sobrecarga.desenhar(F_TITULO);
-    paragrafo(L"Lançar a cápsula agora e deixar a estação para trás, com o organismo lacrado.", F_PEQ, CINZA,
-              btn_fugir.rect.x + 20, btn_fugir.rect.y + 60, 360, 4, true);
-    paragrafo(L"Aplicar toda a energia ao núcleo para destruir o organismo, e fugir no último segundo.", F_PEQ, CINZA,
-              btn_sobrecarga.rect.x + 20, btn_sobrecarga.rect.y + 60, 360, 4, true);
-    texto(L"Escolha com [1] ou [2], ou clique em uma opção", F_PEQ, CINZA, LARGURA / 2, 520, true);
+    texto(L"A CÁPSULA ESTÁ PRONTA", F_GIGANTE, VERDE, LARGURA / 2, 20, true);
+    paragrafo(L"Todos os protocolos foram quebrados. O reator está instável e o organismo ainda se agita do outro lado das "
+              L"paredes. Como esta história termina?", F_TEXTO, BRANCO, 110, 98, LARGURA - 220, 4, true);
+    const Cor cores[4] = {CIANO, rgb(255, 150, 60), rgb(120, 170, 255), rgb(110, 255, 200)};
+    for (int i = 0; i < cinema::NUM_FINAIS; i++) {
+        Ret r = carta_final(i);
+        bool liberado = i < 3 || final_secreto_liberado();
+        bool sobre = liberado && r.contem(entrada.mx, entrada.my);
+        if (sobre) r = r.mover(0, -6);
+        painel(r, sobre ? rgb(18, 36, 52) : rgb(10, 20, 32), liberado ? cores[i] : rgb(70, 80, 96), 240, 12);
+        if (liberado) {
+            cinema::miniatura(i, r.x + 10, r.y + 10, r.w - 20, 150, t);
+        } else {
+            rret(r.x + 10, r.y + 10, r.w - 20, 150, 6, rgb(6, 10, 18));
+            texto(L"?", F_GIGANTE, rgb(90, 104, 124), r.cx(), r.y + 48, true);
+        }
+        rret_borda(r.x + 10, r.y + 10, r.w - 20, 150, 4, 1, rgb(60, 80, 104));
+        const Final& fin = final_cfg(i);
+        int y = r.y + 170;
+        y = paragrafo(liberado ? fin.nome_curto : std::wstring(L"FINAL SECRETO"), F_TITULO, liberado ? cores[i] : CINZA, r.x + 10, y, r.w - 20, 0, true);
+        paragrafo(liberado ? fin.resumo : std::wstring(L"Vença sem nenhuma falha crítica para liberar."), F_PEQ, liberado ? BRANCO : CINZA,
+                  r.x + 14, y + 8, r.w - 28, 3, true);
+        if ((dados.finais >> i) & 1) texto(L"JÁ VISTO", F_HUD_L, VERDE, r.cx(), r.baixo() - 46, true, false);
+        if (liberado) texto(L"[" + a_wstr(i + 1) + L"]", F_TITULO, cores[i], r.cx(), r.baixo() - 30, true);
+    }
+    texto(L"Escolha com as teclas 1 a 4, clicando ou tocando em uma carta   ·   Finais descobertos: " + a_wstr(finais_descobertos()) +
+              L" de " + a_wstr(cinema::NUM_FINAIS), F_PEQ, CINZA, LARGURA / 2, 566, true);
 }
 
 void Jogo::desenhar_vitoria() {
@@ -1260,79 +1218,12 @@ void Jogo::desenhar_fim() {
 }
 
 void Jogo::desenhar_cinema() {
-    float tt = cinema_t;
-    bool sobrecarga = final_escolhido == 1;
-    float sup = limitar((tt - 9.0f) / 6.0f, 0.f, 1.f);
-    int ox = 0, oy = 0;
-    if (tremor > 0) {
-        int amp = (int)(14 * tremor);
-        ox = rng_global().ent(-amp, amp);
-        oy = rng_global().ent(-amp, amp);
-    }
-    ret(0, 0, LARGURA, ALTURA, PRETO);
-    origem(ox, oy);
-    Cor topo = lerp(rgb(6, 16, 32), rgb(70, 160, 210), sup), fundo = lerp(rgb(1, 4, 10), rgb(16, 60, 110), sup);
-    for (int i = 0; i < ALTURA; i += 20) ret(0, i, LARGURA, 20, lerp(topo, fundo, (float)i / ALTURA));
-    if (sup > 0)                                                  // raios de sol
-        for (int k = 0; k < 6; k++) {
-            float x = 120 + k * 170 + std::sin(tt * 0.6f + k) * 30;
-            Pt p[4] = {{x - 30, 0}, {x + 30, 0}, {x + 140, ALTURA}, {x + 40, ALTURA}};
-            poligono(p, 4, rgb(255, 255, 230), (int)(38 * sup));
-        }
-    float sy = estacao_y();
-    bool explodiu = sobrecarga && tt >= 4.5f;
-    if (!explodiu && sy < ALTURA + 120) {
-        int luzes = sobrecarga ? 12 : std::max(0, 12 - (int)(std::max(0.f, tt - 3.0f) * 2.2f));
-        float brilho = sobrecarga ? std::min(1.0f, tt / 4.5f) * (0.6f + 0.4f * std::fabs(std::sin(tt * (4 + 6 * tt / 4.5f)))) : 0.f;
-        desenhar_estacao(sy, luzes, brilho);
-    }
-    if (!sobrecarga && tt >= 6.0f && tt <= 12.0f) {               // olhos do organismo no escuro
-        float a = std::sin((tt - 6.0f) / 6.0f * PI_);
-        if ((int)(tt * 3) % 7 != 0) {
-            const int olhos[4][2] = {{150, 470}, {178, 466}, {860, 500}, {884, 504}};
-            for (auto& o : olhos) {
-                circ((float)o[0], (float)o[1], 12, rgb(255, 40, 40), (int)(90 * a));
-                circ((float)o[0], (float)o[1], 4, rgb(255, 120, 90), (int)(230 * a));
-            }
-        }
-    }
-    for (auto& b : cinema_bolhas) circ_borda(b.x, b.y, b.vx, 1, rgb(170, 220, 240));
-    if (explodiu) {
-        float te = tt - 4.5f;
-        for (auto& d : destrocos) {
-            float c = std::cos(d.ang), s = std::sin(d.ang), hw = d.w / 2, hh = d.h / 2, mx = d.x + hw, my = d.y + hh;
-            Pt p[4];
-            const float q[4][2] = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
-            for (int i = 0; i < 4; i++) p[i] = {mx + q[i][0] * hw * c - q[i][1] * hh * s, my + q[i][0] * hw * s + q[i][1] * hh * c};
-            poligono(p, 4, rgb(60, 66, 78));
-        }
-        if (te < 3.0f) {
-            const struct { float k; Cor cor; } ondas[2] = {{1.0f, rgb(255, 220, 160)}, {0.7f, rgb(255, 140, 60)}};
-            for (auto& o : ondas) {
-                float raio = te * 620 * o.k;
-                if (raio > 4) circ_borda(512, sy + 60, raio, 10, o.cor, (int)(200 * std::max(0.f, 1 - te / 3)));
-            }
-            float br = std::max(0.f, 1 - te / 2.0f);
-            if (br > 0) circ(512, sy + 60, 60 + 220 * te, rgb(255, 190, 90), (int)(160 * br));
-        }
-        if (te < 0.9f) ret(0, 0, LARGURA, ALTURA, rgb(255, 255, 255), (int)(255 * (1 - te / 0.9f)));
-    }
-    float cx, cy;
-    capsula_pos(cx, cy);
-    desenhar_capsula(cx, cy);
-    origem(0, 0);
-    // legenda com efeito de máquina de escrever
-    const Final& fin = final_cfg(final_escolhido);
-    int idx = std::min((int)fin.legendas.size() - 1, (int)(tt / 3.9f));
-    float local = tt - idx * 3.9f;
-    size_t n = (size_t)std::max(0.f, local * 48);
-    std::wstring txt = fin.legendas[idx].substr(0, n);
-    Ret r(90, 56, LARGURA - 180, 84);
-    painel(r, rgb(10, 20, 32), sobrecarga ? AMARELO : CIANO, 200);
-    paragrafo(txt, F_TEXTO, BRANCO, r.x + 24, r.y + 12, r.w - 48, 3);
-    texto(fin.titulo, F_TITULO, AMARELO, LARGURA / 2, 14, true);
-    if (tt >= CINEMA_TOTAL) texto(toque.ativo ? L"Toque na tela para ver o resultado" : L"Clique ou aperte [Enter] para ver o resultado", F_TITULO, pisca(t, BRANCO, AMARELO), LARGURA / 2, ALTURA - 52, true);
-    else if (tt > 1.0f) texto(L"[Enter] ou clique para pular", F_PEQ, CINZA, LARGURA / 2, ALTURA - 30, true);
+    cinema::desenhar(final_escolhido, cinema_t, finais_descobertos());
+    if (cinema_t >= cinema::DURACAO)
+        texto(toque.ativo ? L"Toque para ver o resultado" : L"Clique ou aperte [Enter] para ver o resultado", F_TITULO,
+              pisca(t, BRANCO, AMARELO), LARGURA / 2, ALTURA - 44, true);
+    else if (cinema_t > 1.0f && cinema_t < cinema::INICIO_CARTAO)
+        texto(toque.ativo ? L"toque para pular" : L"[Enter] pular", F_HUD_L, rgb(120, 134, 150), LARGURA / 2, ALTURA - 20, true, false);
 }
 
 void Jogo::desenhar() {

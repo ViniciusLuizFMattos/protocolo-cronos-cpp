@@ -10,7 +10,7 @@ endif()
 
 # Núcleo portátil: regras, cenário, renderizador por software, síntese de áudio (sem API de sistema).
 add_library(nucleo STATIC
-  src/gfx.cpp src/audio.cpp src/calc.cpp src/dados.cpp src/mundo.cpp src/jogo.cpp)
+  src/gfx.cpp src/audio.cpp src/calc.cpp src/dados.cpp src/mundo.cpp src/cinema.cpp src/jogo.cpp)
 target_include_directories(nucleo PUBLIC src)
 if(NOT MSVC)
   target_compile_options(nucleo PRIVATE -Wall -Wextra)

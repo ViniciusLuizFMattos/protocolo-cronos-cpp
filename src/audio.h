@@ -15,6 +15,10 @@ public:
     static constexpr int TAXA = 44100;
     void tocar(const std::string& nome, float volume = 0.55f);
     bool tem(const std::string& nome) const { return sons.count(nome) > 0; }
+    // Trilha de um dos finais (0 a 3): sintetizada na primeira vez que é pedida.
+    void tocar_trilha(int final);
+    void parar_efeitos();                  // interrompe efeitos e trilha (não a música de fundo)
+    void musica_de_fundo(float ganho);     // 0 = silencia o sonar durante a cinemática
     bool alternar_mudo();
     void definir_volume(float v);
     bool mudo = false;
@@ -28,6 +32,8 @@ private:
     struct Impl;
     Impl* im = nullptr;
     static constexpr float VOL_MUSICA = 0.32f;
+    float ganho_musica = 1.0f;
+    void gerar_trilha(int final);
     void gerar();
     void iniciar_musica();
 };

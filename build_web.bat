@@ -9,6 +9,6 @@ for /d %%d in ("%EMROOT%\node\*") do set PATH=%%d\bin;%%d;%PATH%
 set PATH=%EMROOT%\upstream\emscripten;%PATH%
 if not exist build-web mkdir build-web
 call em++.exe -std=gnu++14 -O2 -sUSE_SDL=2 -sALLOW_MEMORY_GROWTH=1 -sENVIRONMENT=web ^
-  src/gfx.cpp src/audio.cpp src/calc.cpp src/dados.cpp src/mundo.cpp src/jogo.cpp src/plataforma_sdl.cpp ^
+  src/gfx.cpp src/audio.cpp src/calc.cpp src/dados.cpp src/mundo.cpp src/cinema.cpp src/jogo.cpp src/plataforma_sdl.cpp ^
   --preload-file assets@/assets --shell-file web/shell.html -o build-web/index.html || exit /b 1
 echo Pronto: build-web\index.html

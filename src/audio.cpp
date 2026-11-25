@@ -91,7 +91,7 @@ void Audio::mixar(short* saida, int n) {
                 if (!v.loop) continue;
                 v.pos = 0;
             }
-            float vol = v.musica ? VOL_MUSICA * volume : v.vol;
+            float vol = v.musica ? VOL_MUSICA * volume * ganho_musica : v.vol;
             acc += (*v.dados)[v.pos++] * vol;
         }
         saida[i] = (short)limitar(acc, -32767.f, 32767.f);
@@ -127,6 +127,64 @@ bool Audio::alternar_mudo() {
         if (!mudo) iniciar_musica();
     }
     return mudo;
+}
+
+void Audio::musica_de_fundo(float ganho) { ganho_musica = limitar(ganho, 0.f, 1.f); }
+
+void Audio::parar_efeitos() {
+    if (!ativo) return;
+    im->lock();
+    vozes.erase(std::remove_if(vozes.begin(), vozes.end(), [](const Voz& v) { return !v.musica; }), vozes.end());
+    im->unlock();
+}
+
+void Audio::tocar_trilha(int final) {
+    std::string nome = "trilha" + std::string(1, (char)('0' + final));
+    if (!sons.count(nome)) gerar_trilha(final);
+    tocar(nome, 0.85f);
+}
+
+namespace {
+// Soma uma nota com ataque e liberação suaves numa onda (usada para montar os acordes das trilhas).
+void nota(Onda& o, float freq, float inicio, float dur, float vol, float ataque, float solta, int timbre) {
+    int i0 = (int)(inicio * SR), n = (int)(dur * SR);
+    double f1 = TAU * freq / SR, f2 = TAU * (freq * 1.004) / SR;
+    for (int i = 0; i < n && i0 + i < (int)o.size(); i++) {
+        float t = (float)i / SR;
+        float env = std::min(1.0f, t / ataque) * std::min(1.0f, (dur - t) / solta);
+        float s;
+        if (timbre == 0) {                       // cordas/pad: duas senoides levemente desafinadas + harmônicos
+            s = (float)(std::sin(f1 * i) + std::sin(f2 * i)) * 0.5f + (float)std::sin(f1 * 2 * i) * 0.18f + (float)std::sin(f1 * 3 * i) * 0.06f;
+        } else {                                 // sino: parciais que decaem
+            s = (float)std::sin(f1 * i) * std::exp(-t * 2.2f) + (float)std::sin(f1 * 2.76 * i) * 0.35f * std::exp(-t * 4.5f);
+        }
+        o[i0 + i] += s * vol * env;
+    }
+}
+float hz(int semitons) { return 220.0f * std::pow(2.0f, semitons / 12.0f); }    // 0 = lá 220 Hz
+}  // namespace
+
+void Audio::gerar_trilha(int final) {
+    // Quatro acordes (um por plano, 5,5 s cada) e um acorde final que sustenta o cartão de título.
+    static const int ACORDES[4][5][3] = {
+        {{-9, -5, -2}, {-2, 2, 5}, {0, 3, 7}, {-4, 0, 3}, {3, 7, 10}},        // Ascensão: Dó, Sol, Lá m, Fá, Dó
+        {{-7, -4, 0}, {-11, -7, -4}, {-14, -11, -7}, {-12, -8, -5}, {-7, -3, 0}},  // Pulso: Ré m, Si b, Sol m, Lá, Ré
+        {{0, 3, 7}, {-4, 0, 3}, {-9, -5, -2}, {-5, -1, 2}, {-12, -9, -5}},     // Guardião: Lá m, Fá, Dó, Mi, Lá m
+        {{-7, -3, 0}, {0, 4, 7}, {2, 5, 9}, {-2, 2, 5}, {5, 9, 12}}};          // Perfeito: Ré, Lá, Si m, Sol, Ré
+    Onda o((size_t)(SR * 29), 0.f);
+    const int (*ac)[3] = ACORDES[final];
+    for (int k = 0; k < 5; k++) {
+        float ini = k * 5.5f, dur = k == 4 ? 6.8f : 6.4f;
+        for (int v = 0; v < 3; v++) nota(o, hz(ac[k][v]), ini, dur, 0.16f, 1.1f, 1.6f, 0);
+        nota(o, hz(ac[k][0] - 12), ini, dur, 0.22f, 0.8f, 1.5f, 0);            // baixo
+        // arpejo de sinos: mais denso nos finais luminosos
+        int passos = (final == 0 || final == 3) ? 8 : 4;
+        for (int p = 0; p < passos; p++) {
+            int nt = ac[k][p % 3] + 12 + ((p / 3) % 2) * 12;
+            if (k >= 1 || p % 2 == 0) nota(o, hz(nt), ini + p * (5.5f / passos), 1.8f, 0.07f + 0.015f * k, 0.01f, 0.5f, 1);
+        }
+    }
+    sons["trilha" + std::string(1, (char)('0' + final))] = criar(o);
 }
 
 void Audio::definir_volume(float v) { volume = limitar(v, 0.f, 1.f); }
@@ -168,6 +226,10 @@ void Audio::gerar() {
         sonar[i] = s + pulso[i % meio];
     }
     sons["sonar"] = criar(sonar);
+    sons["respingo"] = criar(somar({ruido(1.6f, 0.7f, 0.55f, 2.6f), tom(120, 0.5f, 0.4f, SIN, 45, 1.5f)}));
+    sons["rugido"] = criar(somar({tom(55, 2.6f, 0.7f, SUAVE, 38, 0.9f), ruido(2.6f, 0.25f, 0.96f, 0.8f)}));
+    sons["carga"] = criar(tom(110, 4.2f, 0.45f, SUAVE, 880, 0.25f));
+    sons["sino"] = criar(somar({tom(880, 2.2f, 0.4f, SIN, 0, 3.0f), tom(1320, 2.2f, 0.2f, SIN, 0, 4.0f), tom(1760, 2.2f, 0.1f, SIN, 0, 5.0f)}));
     sons["explosao"] = criar(somar({tom(70, 2.2f, 0.8f, SIN, 25, 1.4f), ruido(2.2f, 0.55f, 0.97f, 2.0f)}));
     const float notas[8][2] = {{523, .18f}, {659, .18f}, {784, .18f}, {1047, .36f}, {988, .18f}, {784, .18f}, {880, .45f}, {1047, .9f}};
     Onda mel;

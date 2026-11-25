@@ -20,5 +20,6 @@ struct Paleta { gfx::Cor piso, piso2, parede, parede_luz, destaque; };
 const Paleta& paleta(int idx);
 
 extern const std::wstring TEXTO_HISTORIA;
-struct Final { std::wstring titulo, corpo, epilogo; std::vector<std::wstring> legendas; };
-const Final& final_cfg(int escolha);   // 0 = fugir, 1 = sobrecarregar
+// 0 = Ascensão, 1 = Pulso Cronos, 2 = Guardião, 3 = Protocolo Perfeito (secreto: só sem nenhum erro)
+struct Final { std::wstring titulo, nome_curto, resumo, corpo, epilogo; std::vector<std::wstring> legendas; };
+const Final& final_cfg(int escolha);

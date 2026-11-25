@@ -5,3 +5,4 @@ build-web/
 caps/
 __pycache__/
 /SDL2.dll
+previa/

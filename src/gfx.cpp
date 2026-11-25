@@ -368,7 +368,7 @@ int larg_texto(const std::wstring& t, Fonte f) {
 
 int alt_fonte(Fonte f) { return fontes[f].altura; }
 
-static void escrever(const std::wstring& t, Fonte f, Cor c, int x, int y) {
+static void escrever(const std::wstring& t, Fonte f, Cor c, int x, int y, int alfa = 255, int espaco = 0) {
     float cx = (float)x;
     int base = y + fontes[f].ascent;
     for (wchar_t ch : t) {
@@ -380,10 +380,10 @@ static void escrever(const std::wstring& t, Fonte f, Cor c, int x, int y) {
             for (int i = 0; i < g.w; i++) {
                 int px = gx + i;
                 int a = g.cov[(size_t)j * g.w + i];
-                if (a && (unsigned)px < (unsigned)A.w) mix(&A.px[(size_t)py * A.w + px], c, a);
+                if (a && (unsigned)px < (unsigned)A.w) mix(&A.px[(size_t)py * A.w + px], c, a * alfa / 255);
             }
         }
-        cx += g.avanco;
+        cx += g.avanco + espaco;
     }
 }
 
@@ -393,6 +393,71 @@ void texto(const std::wstring& t, Fonte f, Cor c, int x, int y, bool centro, boo
     x += TX; y += TY;
     if (sombra) escrever(t, f, rgb(0, 0, 0), x + 1, y + 2);
     escrever(t, f, c, x, y);
+}
+
+void texto_cine(const std::wstring& t, Fonte f, Cor c, int cx, int y, int alfa, int espaco) {
+    if (t.empty() || A.px != TELA.px || alfa <= 0) return;
+    if (alfa > 255) alfa = 255;
+    int w = larg_texto(t, f) + espaco * ((int)t.size() - 1);
+    int x = cx - w / 2 + TX;
+    y += TY;
+    escrever(t, f, rgb(0, 0, 0), x + 1, y + 2, alfa * 3 / 4, espaco);
+    escrever(t, f, c, x, y, alfa, espaco);
+}
+
+void gradiente(int x, int y, int w, int h, Cor topo, Cor base, int a) {
+    if (h <= 0 || w <= 0) return;
+    x += TX; y += TY;
+    for (int j = std::max(0, -y); j < h && y + j < A.h; j++)
+        span(y + j, x, x + w, lerp(topo, base, h > 1 ? (float)j / (h - 1) : 0.f), a);
+}
+
+void luz(float cx, float cy, float r, Cor c, float intensidade) {
+    if (r <= 0.5f || intensidade <= 0) return;
+    cx += TX; cy += TY;
+    int y0 = std::max(0, (int)(cy - r)), y1 = std::min(A.h, (int)(cy + r) + 1);
+    float inv = 1.0f / (r * r);
+    int kr = (int)(cr(c) * intensidade), kg = (int)(cg(c) * intensidade), kb = (int)(cb(c) * intensidade);
+    for (int y = y0; y < y1; y++) {
+        float dy = y - cy, lim = r * r - dy * dy;
+        if (lim <= 0) continue;
+        float xo = std::sqrt(lim);
+        int x0 = std::max(0, (int)(cx - xo)), x1 = std::min(A.w, (int)(cx + xo) + 1);
+        uint32_t* p = &A.px[(size_t)y * A.w];
+        for (int x = x0; x < x1; x++) {
+            float dx = x - cx;
+            float q = 1 - (dx * dx + dy * dy) * inv;
+            if (q <= 0) continue;
+            int f = (int)(q * q * 256);
+            uint32_t d = p[x];
+            int rr = std::min(255, (int)((d >> 16) & 255) + ((kr * f) >> 8));
+            int gg = std::min(255, (int)((d >> 8) & 255) + ((kg * f) >> 8));
+            int bb = std::min(255, (int)(d & 255) + ((kb * f) >> 8));
+            p[x] = ((uint32_t)rr << 16) | ((uint32_t)gg << 8) | (uint32_t)bb;
+        }
+    }
+}
+
+void vinheta(float forca) {
+    static std::vector<uint8_t> mapa;
+    static int mw = 0;
+    static float mf = -1;
+    if (mw != A.w || mf != forca) {
+        mw = A.w; mf = forca;
+        mapa.assign((size_t)A.w * A.h, 0);
+        for (int y = 0; y < A.h; y++)
+            for (int x = 0; x < A.w; x++) {
+                float dx = (x - A.w / 2.0f) / (A.w / 2.0f), dy = (y - A.h / 2.0f) / (A.h / 2.0f);
+                float d = std::max(0.f, dx * dx * 0.75f + dy * dy * 0.75f - 0.25f);
+                mapa[(size_t)y * A.w + x] = (uint8_t)std::min(235.f, d * forca * 255);
+            }
+    }
+    size_t n = (size_t)A.w * A.h;
+    for (size_t i = 0; i < n; i++) {
+        int k = 256 - mapa[i];
+        uint32_t d = A.px[i];
+        A.px[i] = ((((d & 0xFF00FF) * k) >> 8) & 0xFF00FF) | ((((d & 0x00FF00) * k) >> 8) & 0x00FF00);
+    }
 }
 
 void texto_dir(const std::wstring& t, Fonte f, Cor c, int xdir, int y, bool sombra) {

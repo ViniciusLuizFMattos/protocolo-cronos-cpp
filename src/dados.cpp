@@ -81,26 +81,38 @@ const std::wstring TEXTO_HISTORIA =
     L"Análise Combinatória para conter um organismo abissal. Resolva os desafios dos terminais, abra as "
     L"portas hidráulicas e chegue à cápsula de fuga antes que o oxigênio, ou a paciência do organismo, acabe.";
 
-static const Final FINAIS[2] = {
-    {L"FINAL A: ASCENSÃO",
-     L"Você sela a escotilha e dispara a cápsula Cronos. Acheron-4 some nas trevas enquanto você sobe, "
-     L"levando os dados dos protocolos. O organismo permanece contido pelas travas que você destravou "
-     L"com Matemática. Você sobreviveu.",
-     L"Os dados dos protocolos chegam à superfície. A Acheron-4 vira zona proibida, e o organismo "
-     L"continua lá embaixo, preso pelas mesmas contas que você resolveu.",
-     {L"A escotilha se fecha. A cápsula Cronos se desprende da estação e começa a subir.",
-      L"Lá embaixo, as luzes de Acheron-4 se apagam uma a uma...",
-      L"...mas algo ainda observa da escuridão. As travas que você quebrou com Matemática agora o mantêm preso.",
-      L"3.000 metros acima, a luz do sol atravessa a água. Você chegou à superfície."}},
-    {L"FINAL B: PULSO CRONOS",
-     L"Você redireciona toda a energia ao núcleo. O reator sobrecarrega e o pulso eletromagnético "
-     L"aniquila o organismo e as portas que o prendiam. Na última contagem regressiva, a cápsula "
-     L"escapa. Acheron-4 deixa de existir, e a ameaça também.",
-     L"Nenhum vestígio do organismo é encontrado. O seu relatório vira material de estudo: "
-     L"contar possibilidades foi o que salvou a missão.",
+static const Final FINAIS[4] = {
+    {L"Final A: Ascensão", L"ASCENSÃO", L"Lançar a cápsula agora e deixar o organismo lacrado.",
+     L"Você sela a escotilha e dispara a cápsula Cronos. Acheron-4 some nas trevas enquanto você sobe, levando os dados dos "
+     L"protocolos. O organismo permanece contido pelas travas que você destravou com Matemática. Você sobreviveu.",
+     L"Os dados chegam à superfície. A Acheron-4 vira zona proibida, e lá embaixo o organismo continua à espera.",
+     {L"A escotilha se fecha. Dezesseis travas confirmam a vedação.",
+      L"A cápsula Cronos se desprende. Uma a uma, as luzes de Acheron-4 se apagam.",
+      L"Mas algo desperta no abismo. As travas que você quebrou com Matemática agora o mantêm preso.",
+      L"Três mil metros acima, o céu amanhece. Você chegou à superfície."}},
+    {L"Final B: Pulso Cronos", L"PULSO CRONOS", L"Sobrecarregar o reator, destruir o organismo e fugir no último segundo.",
+     L"Você redireciona toda a energia ao núcleo. O reator sobrecarrega e o pulso aniquila o organismo e as portas que o "
+     L"prendiam. Na última contagem, a cápsula escapa. Acheron-4 deixa de existir, e a ameaça também.",
+     L"Nenhum vestígio do organismo é encontrado. Contar possibilidades foi o que salvou a missão.",
      {L"Toda a energia flui para o núcleo. O reator começa a gritar.",
-      L"A cápsula dispara no exato instante em que o Pulso Cronos se forma.",
-      L"Uma onda de luz varre o abismo. O organismo e a estação deixam de existir.",
+      L"A cápsula parte enquanto os tentáculos cercam a estação.",
+      L"O Pulso Cronos explode. A luz varre o abismo e desfaz tudo o que ele alcança.",
       L"Na superfície, o mar se acalma. A ameaça acabou, e você sobreviveu."}},
+    {L"Final C: O Guardião", L"O GUARDIÃO", L"Ficar na estação, enviar os dados e selar o organismo para sempre.",
+     L"Você coloca os dados na cápsula e a envia sozinha. Com os protocolos que aprendeu, fecha o último selo por dentro. "
+     L"Alguém precisava ficar de guarda, e você escolheu ser essa pessoa.",
+     L"Meses depois, um sinal responde das alturas. Estão vindo buscar você.",
+     {L"A cápsula parte vazia, levando tudo o que você descobriu.",
+      L"Você puxa a alavanca. Anel após anel, o selo se fecha sobre o organismo.",
+      L"O abismo dorme. Acheron-4 volta a brilhar, calma, no fundo do mar.",
+      L"No sonar, seu farol continua aceso. E então... alguém responde."}},
+    {L"Final secreto: Protocolo Perfeito", L"PROTOCOLO PERFEITO", L"Responder ao chamado: você não errou nenhuma vez.",
+     L"Sem uma única falha, os protocolos entram em ressonância. A criatura nunca foi um monstro: era a guardiã do abismo, "
+     L"presa por humanos que não sabiam conversar com ela. Você falou a língua certa.",
+     L"O relatório oficial não menciona a aurora, nem a despedida. Você nunca precisou que acreditassem.",
+     {L"Doze respostas, nenhuma falha. Os terminais passam a pulsar em harmonia.",
+      L"O olho se abre. A fúria se apaga e dá lugar a algo que se parece com reconhecimento.",
+      L"Ela não tenta impedir você. Ela o carrega para cima.",
+      L"Sob a aurora, a guardiã se despede. Cada ligação possível, enfim, foi feita."}},
 };
 const Final& final_cfg(int e) { return FINAIS[e]; }

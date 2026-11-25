@@ -71,6 +71,13 @@ void blit(const Superficie& s, int x, int y);
 bool salvar_bmp(const char* caminho);   // grava a tela atual em um .bmp (depuração/capturas)
 void escurecer(const uint8_t* alfa, int w, int h, int x, int y, Cor cor);
 
+// --- efeitos de cinema ---
+void gradiente(int x, int y, int w, int h, Cor topo, Cor base, int a = 255);      // degradê vertical
+void luz(float cx, float cy, float r, Cor c, float intensidade);                  // brilho radial ADITIVO
+void vinheta(float forca);                                                        // escurece as bordas da tela inteira
+// Texto com transparência (0-255) e espaçamento extra entre letras, centralizado em cx.
+void texto_cine(const std::wstring& t, Fonte f, Cor c, int cx, int y, int alfa, int espaco = 0);
+
 // --- texto ---
 int larg_texto(const std::wstring& t, Fonte f);
 int alt_fonte(Fonte f);

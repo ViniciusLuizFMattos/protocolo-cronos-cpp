@@ -169,6 +169,11 @@ static void testar_fluxo() {
     CHECK(j.estado == CINEMA, "cinematica");
     passos(j, 60 * 6);
     tecla(j, K_RETURN);
+    CHECK(j.estado == CINEMA && j.cinema_t >= cinema::INICIO_CARTAO, "primeiro Enter pula para o cartao final");
+    tecla(j, K_RETURN);
+    CHECK(j.estado == CINEMA, "o cartao nao some no mesmo instante");
+    passos(j, 100);
+    tecla(j, K_RETURN);
     CHECK(j.estado == VITORIA, "vitoria");
     CHECK(j.classificacao().pontos > 0, "pontuacao positiva");
     tecla(j, K_RETURN);
@@ -350,6 +355,33 @@ static void testar_revisao() {
     j.desenhar();
 }
 
+static void testar_finais() {
+    Audio som;
+    som.iniciar(false);
+    Jogo j(som, nullptr);
+    j.novo_jogo();
+    j.estado = ESCOLHA_FINAL;
+    j.erros = 1;
+    tecla(j, '4');
+    CHECK(j.estado == ESCOLHA_FINAL, "final secreto bloqueado com erros");
+    j.desenhar();
+    for (int f = 0; f < cinema::NUM_FINAIS; f++) {
+        j.estado = ESCOLHA_FINAL;
+        j.erros = 0;
+        Evento e; e.tipo = Ev::MouseDown;
+        e.x = Jogo::carta_final(f).cx(); e.y = Jogo::carta_final(f).cy();
+        j.tratar_evento(e);
+        CHECK(j.estado == CINEMA && j.final_escolhido == f, "clicar na carta inicia o final");
+        for (float t = 0.2f; t < cinema::DURACAO + 1; t += 1.1f) { j.cinema_t = t; j.desenhar(); }     // todos os planos desenham
+        passos(j, 30);
+        CHECK(j.estado == CINEMA, "a cinematica nao avanca sozinha para a vitoria");
+    }
+    CHECK(j.finais_descobertos() == 4, "quatro finais registrados");
+    gfx::definir_largura(1400);                       // tela larga (celular na horizontal)
+    for (int f = 0; f < cinema::NUM_FINAIS; f++) { cinema::desenhar(f, 3.0f, 4); cinema::desenhar(f, 25.0f, 4); }
+    gfx::definir_largura(LARGURA);
+}
+
 int main() {
     gfx::iniciar("assets");
     testar_banco();
@@ -360,6 +392,7 @@ int main() {
     testar_toque_notas();
     testar_mesa_dica();
     testar_revisao();
+    testar_finais();
     std::printf("%d verificacoes, %d falhas\n", total, falhas);
     return falhas ? 1 : 0;
 }

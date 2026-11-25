@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 #include "audio.h"
+#include "cinema.h"
 #include "dados.h"
 #include "entrada.h"
 #include "gfx.h"
@@ -22,6 +23,7 @@ struct Dados {
     int melhor_tempo = 0;       // tempo restante da melhor partida (s)
     std::wstring melhor_letra = L"-";
     int partidas = 0, vitorias = 0;
+    int finais = 0;             // máscara de bits dos finais já vistos
     float volume = 0.7f;
     bool mudo = false;
 };
@@ -136,7 +138,6 @@ struct ControlesToque {
 };
 
 struct Particula { float x, y, vx, vy, vida; gfx::Cor cor; };
-struct Destroco { float x, y, vx, vy, w, h, ang; };
 
 class Jogo {
 public:
@@ -169,6 +170,14 @@ public:
     Iluminacao luz;
     bool pausado = false;
     int final_escolhido = -1;
+    bool final_secreto_liberado() const { return erros == 0; }
+    int finais_descobertos() const {
+        int n = 0;
+        for (int i = 0; i < cinema::NUM_FINAIS; i++) n += (dados.finais >> i) & 1;
+        return n;
+    }
+    static gfx::Ret carta_final(int i) { return gfx::Ret(28 + i * 246, 190, 230, 350); }
+    void escolher_final(int i) { if (i < 3 || final_secreto_liberado()) iniciar_cinema(i); }
     std::wstring derrota_pendente, motivo_derrota;
     float flash_verm = 0, flash_verde = 0, tremor = 0;
     std::wstring aviso;
@@ -213,10 +222,7 @@ private:
     friend class Desafio;
     std::vector<Particula> bolhas;       // x, y, raio, velocidade (vx=raio, vy=vel)
     std::vector<Particula> fogos;
-    std::vector<Destroco> destrocos;
-    std::vector<Particula> cinema_bolhas;
-    std::set<std::string> cinema_eventos;
-    Botao btn_iniciar, btn_novo, btn_fugir, btn_sobrecarga, btn_continuar, btn_menu, btn_revisar, btn_ant, btn_prox, btn_voltar;
+    Botao btn_iniciar, btn_novo, btn_continuar, btn_menu, btn_revisar, btn_ant, btn_prox, btn_voltar;
     gfx::Ret r_som, r_pausa;
     bool arrastando_vol = false;
     int dedo_vol = -3;
@@ -228,8 +234,6 @@ private:
     void atualizar_jogo(float dt);
     void atualizar_cinema(float dt);
     void iniciar_cinema(int final);
-    float estacao_y() const { return 430 + cinema_t * 15; }
-    void capsula_pos(float& x, float& y) const;
     void salvar();
 
     void desenhar_fundo_menu();
@@ -245,8 +249,6 @@ private:
     void desenhar_cinema();
     void desenhar_dica();
     void desenhar_revisao();
-    void desenhar_estacao(float sy, int luzes, float brilho);
-    void desenhar_capsula(float cx, float cy);
     void rotulo(const std::wstring& txt, int cx, int cy, gfx::Cor cor, bool pequeno = false);
     bool r_volume(gfx::Ret& r) const;
     void ajustar_volume(int x);
