@@ -63,6 +63,8 @@ jobs:
         run: |
           emcmake cmake -S . -B build-web -DCMAKE_BUILD_TYPE=Release
           cmake --build build-web
+      - name: Incluir a apresentacao no site
+        run: cp -r apresentacao build-web/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build-web

@@ -1,0 +1,210 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Protocolo Cronos++ — apresentação</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"><style>
+@page { size: 1920px 1080px; margin: 0; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { margin: 0; padding: 0; }
+section { position: relative; width: 1920px; height: 1080px; box-sizing: border-box; overflow: hidden; break-after: page; }
+section:last-child { break-after: auto; }
+h1, h2, h3, p { margin: 0; }
+a { color: inherit; }
+img { flex: none; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: .75em .6em; border-bottom: 2px solid #2b536c; }
+th { font-weight: 600; color: #46DCEB; }
+section { background:#071420; color:#EAF4F8; font-family:'Inter', Arial, sans-serif; padding:128px; display:flex; flex-direction:column; gap:48px; }
+.alt { background:#0D2030; }
+h1, h2, h3 { font-family:'Space Grotesk', Arial, sans-serif; margin:0; }
+h1 { font-size:112px; line-height:1.05; font-weight:700; }
+h2 { font-size:64px; line-height:1.1; font-weight:700; }
+h3 { font-size:36px; line-height:1.2; font-weight:600; }
+p { margin:0; font-size:32px; line-height:1.45; color:#B9D3DF; }
+.olho { font-size:24px; font-weight:600; color:#46DCEB; letter-spacing:4px; }
+.titulo { display:flex; flex-direction:column; gap:12px; }
+.lado { display:flex; flex-direction:row; gap:64px; align-items:flex-start; }
+.coluna { display:flex; flex-direction:column; gap:32px; }
+.tela { border-radius:16px; border:2px solid #24506A; object-fit:contain; }
+.ponto { display:flex; flex-direction:column; gap:8px; }
+.ponto p { font-size:28px; }
+.cartoes { display:flex; flex-direction:row; gap:32px; }
+.cartao { flex:1; display:flex; flex-direction:column; gap:16px; padding:40px; background:#0D2030; border-radius:20px; border:2px solid #24506A; }
+.cartao p { font-size:28px; }
+.alt .cartao { background:#071420; }
+.numero { font-family:'Space Grotesk', Arial, sans-serif; font-size:112px; line-height:1; font-weight:700; color:#FAC43C; }
+.cartao .numero { font-size:112px; color:#FAC43C; line-height:1; }
+table { font-size:30px; color:#EAF4F8; }
+.legenda { font-size:26px; color:#EAF4F8; }
+.grade { display:grid; grid-template-columns:1fr 1fr; gap:24px 48px; }
+.item { display:flex; flex-direction:row; gap:24px; align-items:center; }
+.item div { display:flex; flex-direction:column; gap:8px; }
+.item p { font-size:24px; }
+</style><style>
+html, body { height: 100%; overflow: hidden; background: #02080d; }
+#palco { position: fixed; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center; }
+#palco > section { display: none; position: absolute; left: 0; top: 0; }
+#palco > section.ativo { display: flex; }
+nav { position: fixed; right: 12px; bottom: 12px; display: flex; gap: 8px; align-items: center; font: 14px system-ui, sans-serif; color: #cfe6f0; z-index: 2; opacity: .45; transition: opacity .2s; }
+nav:hover, nav:focus-within { opacity: 1; }
+nav button, nav a { background: #0d2030; color: #cfe6f0; border: 1px solid #2b536c; border-radius: 8px; padding: 8px 14px; font: inherit; text-decoration: none; cursor: pointer; }
+</style></head><body><main id="palco"><section id="cover" data-transition="fade">
+<img src="img/fim_a.png" alt="Cápsula subindo no abismo diante dos olhos vermelhos do organismo" style="position:absolute; left:864px; top:210px; width:1056px; height:660px; object-fit:cover">
+<div style="position:absolute; left:128px; top:290px; width:700px; display:flex; flex-direction:column; gap:32px">
+<p class="olho">ESCAPE ROOM EDUCATIVO</p>
+<h1>Protocolo<br>Cronos++</h1>
+<p>O Bunker Submerso: um jogo para aprender Análise Combinatória fugindo de uma estação a 3.000 metros de profundidade.</p>
+<p style="color:#EAF4F8; font-size:28px"><b>Vinicius Luiz Ferreira de Mattos</b><br>Ciência de Dados e IA</p>
+</div>
+
+</section>
+<section id="premissa" data-transition="fade">
+<div class="titulo"><p class="olho">A HISTÓRIA</p><h2>Preso em Acheron-4</h2></div>
+<div class="lado">
+<div class="coluna" style="width:640px">
+<p>Ano 2089. A estação submarina sofre um colapso estrutural, e você é o único sobrevivente.</p>
+<p>A equipe anterior trancou cada setor com protocolos baseados em <b>Análise Combinatória</b>, para conter um organismo abissal.</p>
+<p>Resolva os terminais, abra as portas hidráulicas e chegue à cápsula de fuga antes que o tempo acabe.</p>
+</div>
+<img class="tela" src="img/menu.png" alt="Tela inicial do jogo com a história e os controles" width="960" height="600">
+</div>
+
+</section>
+<section id="fases" class="alt" data-transition="fade">
+<div class="titulo"><p class="olho">CONTEÚDO</p><h2>Cinco salas, cinco assuntos</h2></div>
+<table>
+<tr><th style="width:26%">Sala</th><th style="width:40%">Assunto</th><th style="width:14%">Nível</th><th style="width:10%">Acertos</th><th style="width:10%">Banco</th></tr>
+<tr><td>1 · Câmara de Eclusa</td><td>Princípio Fundamental da Contagem</td><td>Fácil</td><td>1</td><td>10</td></tr>
+<tr><td>2 · Laboratório Genético</td><td>Permutação simples e com repetição</td><td>Básico</td><td>2</td><td>20</td></tr>
+<tr><td>3 · Central de Sonar</td><td>Arranjo simples</td><td>Intermediário</td><td>2</td><td>20</td></tr>
+<tr><td>4 · Câmara do Reator</td><td>Combinação simples</td><td>Avançado</td><td>3</td><td>20</td></tr>
+<tr><td>5 · Sala da Cápsula</td><td>Restrições e integração</td><td>Difícil</td><td>4</td><td>20</td></tr>
+</table>
+<p>90 questões no total, sorteadas sem repetição dentro da partida.</p>
+
+</section>
+<section id="regras" data-transition="fade">
+<div class="titulo"><p class="olho">REGRAS</p><h2>Errar custa, mas ensina</h2></div>
+<div class="cartoes">
+<div class="cartao"><p class="numero">12</p><h3>acertos</h3><p>Somando as cinco salas, para vencer.</p></div>
+<div class="cartao"><p class="numero">12</p><h3>minutos</h3><p>Tempo total da partida.</p></div>
+<div class="cartao"><p class="numero">5</p><h3>falhas</h3><p>No quinto erro, o bunker colapsa.</p></div>
+<div class="cartao"><p class="numero">20 s</p><h3>de punição</h3><p>A cada erro, o terminal sorteia outra questão do mesmo nível.</p></div>
+</div>
+<p>A resolução da questão errada aparece na hora, e os acertos já conquistados não se perdem. Chutar a mesma pergunta não funciona.</p>
+
+</section>
+<section id="explorar" class="alt" data-transition="fade">
+<div class="titulo"><p class="olho">COMO SE JOGA</p><h2>Explorar no escuro</h2></div>
+<div class="lado">
+<img class="tela" src="img/jogo.png" alt="Mergulhador com lanterna ao lado do Painel de Fusíveis" width="1056" height="660">
+<div class="coluna" style="width:544px">
+<div class="ponto"><h3>Lanterna</h3><p>A sala é escura: o mergulhador ilumina o caminho enquanto procura os terminais.</p></div>
+<div class="ponto"><h3>Terminais e porta</h3><p>Luz vermelha é pendente, verde é concluído. Com a meta cumprida, a porta hidráulica abre.</p></div>
+<div class="ponto"><h3>Controles</h3><p>WASD ou setas, Shift para correr e E para interagir. No celular, joystick e botões na tela.</p></div>
+</div>
+</div>
+
+</section>
+<section id="terminal" data-transition="fade">
+<div class="titulo"><p class="olho">NO TERMINAL</p><h2>Pergunta e rascunho lado a lado</h2></div>
+<div class="lado">
+<div class="coluna" style="width:544px">
+<div class="ponto"><h3>Resposta numérica</h3><p>Digite pelo teclado ou pelo teclado na tela.</p></div>
+<div class="ponto"><h3>Bloco de notas</h3><p>Uma calculadora com fatorial, potência e parênteses, aberta com a tecla N.</p></div>
+<div class="ponto"><h3>Usar na resposta</h3><p>O resultado inteiro da conta vai direto para o campo do terminal.</p></div>
+</div>
+<img class="tela" src="img/notas.png" alt="Terminal com uma questão e o bloco de notas calculando 3 vezes 4 vezes 2" width="1056" height="660">
+</div>
+
+</section>
+<section id="aprender" class="alt" data-transition="fade">
+<div class="titulo"><p class="olho">APRENDIZADO</p><h2>Dica durante, revisão depois</h2></div>
+<div class="lado" style="gap:48px">
+<div class="coluna" style="width:808px; gap:24px">
+<img class="tela" src="img/dica.png" alt="Mesa de análise mostrando a dica de método da pergunta atual" width="808" height="470">
+<div class="ponto"><h3>Mesa de análise</h3><p>Mostra o método da pergunta atual, nunca o resultado. Custa 10 s na primeira consulta.</p></div>
+</div>
+<div class="coluna" style="width:808px; gap:24px">
+<img class="tela" src="img/revisao.png" alt="Revisão de um erro com resposta dada, resposta correta e resolução" width="808" height="470">
+<div class="ponto"><h3>Painel de revisão</h3><p>Ao fim, resume o desempenho por assunto e reapresenta cada erro com a resolução.</p></div>
+</div>
+</div>
+
+</section>
+<section id="escolha" data-transition="fade">
+<div class="titulo"><p class="olho">O FIM</p><h2>Você escolhe como termina</h2></div>
+<div class="lado">
+<img class="tela" src="img/escolha.png" alt="Tela de escolha com quatro cartas, uma para cada final" width="1056" height="660">
+<div class="coluna" style="width:544px">
+<p>Depois das cinco salas, quatro cartas animadas apresentam os desfechos.</p>
+<p>O quarto é <b>secreto</b>: só abre para quem vence sem nenhuma falha crítica.</p>
+<p>O jogo guarda os finais já vistos, um convite para jogar de novo.</p>
+</div>
+</div>
+
+</section>
+<section id="finais" class="alt" data-transition="fade" style="gap:32px">
+<div class="titulo"><p class="olho">QUATRO FINAIS ANIMADOS</p><h2>Cada escolha, uma cena</h2></div>
+<div class="grade">
+<div class="item"><img class="tela" src="img/fim_a.png" alt="Final Ascensão" width="480" height="300"><div><h3>Ascensão</h3><p>Fugir e deixar o organismo lacrado.</p></div></div>
+<div class="item"><img class="tela" src="img/fim_b.png" alt="Final Pulso Cronos" width="480" height="300"><div><h3>Pulso Cronos</h3><p>Sobrecarregar o reator e destruir tudo.</p></div></div>
+<div class="item"><img class="tela" src="img/fim_c.png" alt="Final O Guardião" width="480" height="300"><div><h3>O Guardião</h3><p>Ficar e fechar o selo por dentro.</p></div></div>
+<div class="item"><img class="tela" src="img/fim_d.png" alt="Final secreto Protocolo Perfeito" width="480" height="300"><div><h3>Protocolo Perfeito</h3><p>Secreto: descobrir quem o organismo era.</p></div></div>
+</div>
+
+</section>
+<section id="tecnologia" data-transition="fade">
+<div class="titulo"><p class="olho">TECNOLOGIA</p><h2>Reescrito em C++, feito por código</h2></div>
+<div class="cartoes">
+<div class="cartao"><h3>Núcleo portátil</h3><p>Regras, desenho e som em C++, sem depender do sistema. A camada SDL2 liga o jogo à tela, ao áudio e à entrada.</p></div>
+<div class="cartao"><h3>Sem arquivos de arte</h3><p>Cenários, animações, efeitos e músicas são gerados em tempo real. Só as fontes de texto vêm de fora.</p></div>
+<div class="cartao"><h3>Um código, várias telas</h3><p>Versões compiladas para Windows, Linux, macOS e navegador, publicadas por um fluxo automático no GitHub.</p></div>
+<div class="cartao"><h3>Testado</h3><p>Testes automáticos percorrem o banco de questões, os mapas, as regras e os finais.</p></div>
+</div>
+<p>A primeira versão do jogo foi feita em Python com Pygame; esta é a reescrita ampliada.</p>
+
+</section>
+<section id="jogar" style="background:#46DCEB; justify-content:center; gap:48px">
+<p class="olho" style="color:#071420">SUA VEZ</p>
+<h1 style="color:#071420">Você consegue escapar?</h1>
+<p style="color:#071420; font-size:36px; width:1200px">Abra no navegador do computador ou do celular. Não precisa instalar nada.</p>
+<p style="color:#071420; font-size:44px; font-weight:600"><a href="https://viniciusluizfmattos.github.io/protocolo-cronos-cpp/">viniciusluizfmattos.github.io/protocolo-cronos-cpp</a></p>
+
+</section>
+</main><nav>
+<button id="ant" aria-label="Slide anterior">&#8592;</button><span id="num"></span><button id="prox" aria-label="Próximo slide">&#8594;</button>
+<button id="cheia">Tela cheia</button><a href="Protocolo-Cronos-apresentacao.pdf" download>Baixar PDF</a>
+</nav>
+<script>
+var s = document.querySelectorAll('#palco > section'), palco = document.getElementById('palco'), i = 0;
+function ir(n) {
+  i = Math.max(0, Math.min(s.length - 1, n));
+  s.forEach(function (e, k) { e.classList.toggle('ativo', k === i); });
+  document.getElementById('num').textContent = (i + 1) + ' / ' + s.length;
+  history.replaceState(null, '', '#' + (i + 1));
+}
+function ajustar() {
+  var e = Math.min(innerWidth / 1920, innerHeight / 1080);
+  palco.style.transform = 'translate(-50%, -50%) scale(' + e + ')';
+}
+document.getElementById('ant').onclick = function () { ir(i - 1); };
+document.getElementById('prox').onclick = function () { ir(i + 1); };
+document.getElementById('cheia').onclick = function () {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+};
+addEventListener('keydown', function (e) {
+  if (['ArrowRight', 'PageDown', ' ', 'Enter'].indexOf(e.key) >= 0) { e.preventDefault(); ir(i + 1); }
+  else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(e.key) >= 0) { e.preventDefault(); ir(i - 1); }
+  else if (e.key === 'Home') ir(0);
+  else if (e.key === 'End') ir(s.length - 1);
+});
+palco.addEventListener('click', function (e) { if (!e.target.closest('a')) ir(i + (e.clientX < innerWidth / 3 ? -1 : 1)); });
+var x0 = null;
+addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+addEventListener('touchend', function (e) {
+  if (x0 === null) return;
+  var d = e.changedTouches[0].clientX - x0; x0 = null;
+  if (Math.abs(d) > 50) { e.preventDefault(); ir(i + (d < 0 ? 1 : -1)); }
+});
+addEventListener('resize', ajustar);
+ajustar();
+ir((parseInt(location.hash.slice(1), 10) || 1) - 1);
+</script></body></html>
